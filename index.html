@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pitanje za dejt</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), transparent 34%),
+        linear-gradient(135deg, #fde7ef 0%, #f9c5d7 45%, #f7dce8 100%);
+      font-family: Arial, sans-serif;
+      overflow-x: hidden;
+    }
+
+    #app {
+      width: 100%;
+      min-height: 620px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.24);
+      box-shadow: 0 25px 70px rgba(153, 53, 86, 0.25);
+    }
+
+    #app::before {
+      content: "";
+      position: absolute;
+      width: 520px;
+      height: 520px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.34);
+      filter: blur(18px);
+      top: -180px;
+      right: -170px;
+    }
+
+    #app::after {
+      content: "";
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      border-radius: 50%;
+      background: rgba(212, 83, 126, 0.12);
+      filter: blur(22px);
+      bottom: -120px;
+      left: -90px;
+    }
+
+    .petals,
+    .rose-rain {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .petal {
+      position: absolute;
+      bottom: -45px;
+      font-size: 18px;
+      animation: riseUp linear infinite;
+      opacity: 0.48;
+    }
+
+    @keyframes riseUp {
+      0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 0.48; }
+      100% { transform: translateY(-720px) rotate(360deg) scale(0.58); opacity: 0; }
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(16px);
+      border-radius: 32px;
+      padding: 2.7rem 2.2rem 2.2rem;
+      text-align: center;
+      max-width: 450px;
+      width: 100%;
+      border: 1.5px solid rgba(244, 192, 209, 0.9);
+      position: relative;
+      z-index: 2;
+      box-shadow: 0 20px 45px rgba(153, 53, 86, 0.18);
+    }
+
+    .soft-label {
+      display: inline-block;
+      color: #b83f69;
+      background: #fff0f5;
+      border: 1px solid #f4c0d1;
+      border-radius: 999px;
+      padding: 7px 13px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      margin-bottom: 1rem;
+    }
+
+    .pulse-heart,
+    .sure-emoji,
+    .final-heart {
+      display: block;
+      margin-bottom: 0.7rem;
+      animation: heartBeat 1.8s ease-in-out infinite;
+    }
+
+    .pulse-heart { font-size: 58px; }
+    .sure-emoji { font-size: 52px; }
+    .final-heart { font-size: 68px; }
+
+    @keyframes heartBeat {
+      0%, 100% { transform: scale(1); }
+      38% { transform: scale(1.12); }
+      62% { transform: scale(1.03); }
+    }
+
+    .title,
+    .sure-title,
+    .final-title {
+      color: #88304f;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+
+    .title {
+      font-size: 28px;
+      margin-bottom: 0.65rem;
+    }
+
+    .subtitle,
+    .sure-sub,
+    .final-sub {
+      color: #b83f69;
+      line-height: 1.65;
+    }
+
+    .subtitle {
+      font-size: 14.5px;
+      margin-bottom: 1.6rem;
+    }
+
+    .question {
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #672139;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.35;
+      margin-bottom: 1.4rem;
+    }
+
+    .typing-text {
+      border-right: 2px solid #d4537e;
+      padding-right: 3px;
+      animation: caretBlink 0.8s step-end infinite;
+    }
+
+    @keyframes caretBlink {
+      50% { border-color: transparent; }
+    }
+
+    .arena,
+    .sure-arena {
+      position: relative;
+      width: 100%;
+      height: 92px;
+      margin-top: 0.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .yes-wrap,
+    .no-wrap {
+      position: absolute;
+      left: 50%;
+      top: 20px;
+    }
+
+    .yes-wrap {
+      transform: translateX(calc(-50% - 82px));
+      z-index: 2;
+    }
+
+    .no-wrap {
+      transform: translateX(36px);
+      z-index: 3;
+    }
+
+    button {
+      font-family: Arial, sans-serif;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-yes,
+    .btn-sure-yes {
+      color: #fff;
+      border: none;
+      background: linear-gradient(135deg, #d4537e, #993556);
+      box-shadow: 0 10px 22px rgba(212, 83, 126, 0.35);
+      font-weight: 800;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+    }
+
+    .btn-yes {
+      padding: 17px 50px;
+      font-size: 18px;
+    }
+
+    .btn-sure-yes {
+      padding: 15px 34px;
+      font-size: 16px;
+    }
+
+    .btn-yes:hover,
+    .btn-sure-yes:hover {
+      transform: scale(1.07);
+      filter: brightness(1.03);
+      box-shadow: 0 14px 28px rgba(153, 53, 86, 0.35);
+    }
+
+    .btn-yes:active,
+    .btn-sure-yes:active {
+      transform: scale(0.97);
+    }
+
+    .btn-no,
+    .btn-sure-no {
+      color: #993556;
+      background: rgba(255, 255, 255, 0.9);
+      border: 2.5px solid #ed93b1;
+      font-weight: 800;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      box-shadow: 0 8px 18px rgba(153, 53, 86, 0.08);
+    }
+
+    .btn-no {
+      padding: 15px 36px;
+      font-size: 16px;
+    }
+
+    .btn-sure-no {
+      padding: 14px 28px;
+      font-size: 15px;
+    }
+
+    .btn-no:hover,
+    .btn-sure-no:hover {
+      background: #fff0f5;
+      border-color: #d4537e;
+    }
+
+    .hint {
+      color: #c8587c;
+      font-size: 12.2px;
+      margin-top: 0.65rem;
+      line-height: 1.45;
+    }
+
+    .escapes-label {
+      color: #993556;
+      font-size: 13.5px;
+      font-weight: 700;
+      min-height: 21px;
+      margin-top: 0.15rem;
+      transition: opacity 0.2s ease;
+    }
+
+    .phase { display: none; }
+    .phase.active { display: block; }
+
+    .sure-title {
+      font-size: 24px;
+      margin-bottom: 0.55rem;
+    }
+
+    .sure-sub {
+      font-size: 14px;
+      margin-bottom: 1.25rem;
+    }
+
+    .sure-arena .yes-wrap {
+      transform: translateX(calc(-50% - 88px));
+    }
+
+    .sure-arena .no-wrap {
+      transform: translateX(36px);
+    }
+
+    .final-title {
+      font-size: 29px;
+      margin-bottom: 0.65rem;
+    }
+
+    .final-sub {
+      font-size: 15px;
+    }
+
+    .final-sub strong {
+      display: inline-block;
+      color: #88304f;
+      font-size: 17px;
+      margin-top: 0.3rem;
+    }
+
+    .hearts-line {
+      margin-top: 1.4rem;
+      font-size: 27px;
+      letter-spacing: 6px;
+    }
+
+    .rose-drop {
+      position: absolute;
+      top: -40px;
+      animation: fallDown linear forwards;
+      z-index: 10;
+      filter: drop-shadow(0 8px 10px rgba(153, 53, 86, 0.18));
+    }
+
+    @keyframes fallDown {
+      0% { transform: translateY(-40px) rotate(0deg); opacity: 0; }
+      10% { opacity: 1; }
+      100% { transform: translateY(720px) rotate(420deg); opacity: 0; }
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 10px; }
+      #app { min-height: 600px; padding: 1.1rem; border-radius: 22px; }
+      .card { padding: 2.2rem 1.15rem 1.7rem; border-radius: 26px; }
+      .title { font-size: 25px; }
+      .question { font-size: 21px; min-height: 78px; }
+      .arena, .sure-arena { height: 112px; }
+      .yes-wrap { transform: translateX(-50%); top: 8px; }
+      .no-wrap { transform: translateX(-50%); top: 68px; }
+      .sure-arena .yes-wrap { transform: translateX(-50%); top: 8px; }
+      .sure-arena .no-wrap { transform: translateX(-50%); top: 68px; }
+      .btn-yes, .btn-sure-yes, .btn-no, .btn-sure-no { width: 210px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="petals" id="petals"></div>
+    <div class="rose-rain" id="roseRain"></div>
+
+    <div class="card">
+      <div id="p1" class="phase active">
+        <span class="soft-label">malo pitanje, puno hrabrosti</span>
+        <span class="pulse-heart">💗</span>
+        <p class="title">Hej... imam jedno pitanje</p>
+        <p class="subtitle">
+          Već neko vrijeme skupljam hrabrost da te ovo pitam,<br>
+          pa sam odlučio da uradim na malo drugačiji način. 💕
+        </p>
+        <p class="question"><span id="questionText" class="typing-text"></span></p>
+
+        <div class="arena" id="arena1">
+          <div class="yes-wrap">
+            <button class="btn-yes" type="button" onclick="goSure()">Da 💖</button>
+          </div>
+          <div class="no-wrap" id="nw1">
+            <button class="btn-no" type="button" id="nb1">Ne 🙈</button>
+          </div>
+        </div>
+
+        <div class="escapes-label" id="escapesLabel"></div>
+        <p class="hint">Mislim da je dugme „Ne” danas malo stidljivo... 😅</p>
+      </div>
+
+      <div id="p2" class="phase">
+        <span class="sure-emoji">🥺</span>
+        <p class="sure-title">Jesi li baš sigurna?</p>
+        <p class="sure-sub">
+          Razmisli još jednom... obećavam prijatno društvo,<br>
+          mnogo smijeha i jedan lijep izlazak. 🌹✨
+        </p>
+
+        <div class="sure-arena" id="arena2">
+          <div class="yes-wrap">
+            <button class="btn-sure-yes" type="button" onclick="goFinal()">Dobro, pristajem ❤️</button>
+          </div>
+          <div class="no-wrap" id="nw2">
+            <button class="btn-sure-no" type="button" id="nb2">I dalje ne 🙈</button>
+          </div>
+        </div>
+
+        <p class="hint">Nekako mi se čini da ni ovo dugme ne želi da bude kliknuto. 😅</p>
+      </div>
+
+      <div id="p3" class="phase">
+        <span class="final-heart">🥰</span>
+        <p class="final-title">Pristala si! ❤️</p>
+        <p class="final-sub">
+          Ne znaš koliko si me upravo usrećila.<br>
+          Jedva čekam da provedemo vrijeme zajedno,<br>
+          upoznamo se još bolje i napravimo lijepu uspomenu. 🌹✨<br><br>
+          <strong>Vidimo se uskoro. ❤️</strong>
+        </p>
+        <div class="hearts-line">💗 💖 💗 💖 💗</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const question = 'Da li bi mi dala priliku da te izvedem na jedan dejt? 🌹✨';
+    const shyMessages = [
+      '🙈 Ne bježi od mene...',
+      '🥺 Jesi li sigurna?',
+      '💕 Daj mi makar malu šansu...',
+      '🌹 Obećavam da neće biti dosadno.',
+      '☕ Bar jedna kafa?',
+      '❤️ Hajde, reci „Da”.'
+    ];
+
+    let escapes = 0;
+    let runAwayInitialized = new Set();
+
+    function typeQuestion() {
+      const el = document.getElementById('questionText');
+      let i = 0;
+
+      function type() {
+        el.textContent = question.slice(0, i);
+        i++;
+
+        if (i <= question.length) {
+          setTimeout(type, 38);
+        } else {
+          el.classList.remove('typing-text');
+        }
+      }
+
+      type();
+    }
+
+    function spawnPetals() {
+      const container = document.getElementById('petals');
+      const icons = ['🌸', '🌹', '💗', '💖', '💕', '🌷', '✨'];
+      container.innerHTML = '';
+
+      for (let i = 0; i < 26; i++) {
+        const petal = document.createElement('div');
+        petal.className = 'petal';
+        petal.textContent = icons[Math.floor(Math.random() * icons.length)];
+        petal.style.left = Math.random() * 100 + '%';
+        petal.style.fontSize = 13 + Math.random() * 16 + 'px';
+        petal.style.animationDuration = 7 + Math.random() * 8 + 's';
+        petal.style.animationDelay = Math.random() * 9 + 's';
+        container.appendChild(petal);
+      }
+    }
+
+    function makeRunAway(wrapperId, arenaId, labelId) {
+      if (runAwayInitialized.has(wrapperId)) {
+        return;
+      }
+
+      const wrapper = document.getElementById(wrapperId);
+      const arena = document.getElementById(arenaId);
+
+      if (!wrapper || !arena) {
+        return;
+      }
+
+      runAwayInitialized.add(wrapperId);
+
+      let x = 36;
+      let y = 0;
+
+      function getInitialY() {
+        return window.innerWidth <= 520 ? 68 : 20;
+      }
+
+      function applyPosition(nextX, nextY) {
+        wrapper.style.transition = 'transform 0.14s cubic-bezier(.2,.8,.4,1)';
+
+        if (window.innerWidth <= 520) {
+          wrapper.style.transform = `translate(calc(-50% + ${nextX}px), ${nextY - 68}px)`;
+        } else {
+          wrapper.style.transform = `translate(${nextX}px, ${nextY - 20}px)`;
+        }
+      }
+
+      function flee(clientX, clientY) {
+        const rect = arena.getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const buttonCenterX = wrapperRect.left + wrapperRect.width / 2;
+        const buttonCenterY = wrapperRect.top + wrapperRect.height / 2;
+        const dx = clientX - buttonCenterX;
+        const dy = clientY - buttonCenterY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 155) {
+          return;
+        }
+
+        const arenaWidth = rect.width;
+        const arenaHeight = rect.height;
+        const maxX = arenaWidth / 2 - wrapperRect.width / 2 - 8;
+        const minX = -arenaWidth / 2 + wrapperRect.width / 2 + 8;
+        const maxY = arenaHeight - wrapperRect.height - 4;
+        const minY = 4;
+
+        let nextX = x - dx * 1.45;
+        let nextY = getInitialY() - dy * 1.1;
+
+        nextX = Math.max(minX, Math.min(maxX, nextX));
+        nextY = Math.max(minY, Math.min(maxY, nextY));
+
+        if (Math.abs(nextX - x) < 8) {
+          nextX = nextX > 0 ? minX : maxX;
+        }
+
+        x = nextX;
+        y = nextY;
+        applyPosition(x, y);
+
+        escapes++;
+
+        if (labelId) {
+          const label = document.getElementById(labelId);
+          if (label) {
+            label.textContent = shyMessages[Math.min(escapes - 1, shyMessages.length - 1)];
+          }
+        }
+      }
+
+      document.addEventListener('mousemove', function (event) {
+        flee(event.clientX, event.clientY);
+      });
+
+      wrapper.addEventListener('touchstart', function (event) {
+        event.preventDefault();
+        const touch = event.touches[0];
+        flee(touch.clientX, touch.clientY);
+      }, { passive: false });
+
+      wrapper.addEventListener('click', function (event) {
+        event.preventDefault();
+        const rect = wrapper.getBoundingClientRect();
+        flee(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      });
+    }
+
+    function goSure() {
+      document.getElementById('p1').classList.remove('active');
+      document.getElementById('p2').classList.add('active');
+      escapes = 0;
+      setTimeout(function () {
+        makeRunAway('nw2', 'arena2', null);
+      }, 120);
+    }
+
+    function goFinal() {
+      document.getElementById('p2').classList.remove('active');
+      document.getElementById('p3').classList.add('active');
+      startRoseRain();
+    }
+
+    function startRoseRain() {
+      const container = document.getElementById('roseRain');
+      const icons = ['🌹', '❤️', '💗', '💖', '✨'];
+      container.innerHTML = '';
+
+      function createDrop() {
+        const drop = document.createElement('div');
+        drop.className = 'rose-drop';
+        drop.textContent = icons[Math.floor(Math.random() * icons.length)];
+        drop.style.left = Math.random() * 100 + '%';
+        drop.style.fontSize = 18 + Math.random() * 16 + 'px';
+        drop.style.animationDuration = 2.5 + Math.random() * 2.2 + 's';
+        drop.style.animationDelay = Math.random() * 0.25 + 's';
+        container.appendChild(drop);
+
+        setTimeout(function () {
+          drop.remove();
+        }, 5200);
+      }
+
+      for (let i = 0; i < 38; i++) {
+        setTimeout(createDrop, i * 45);
+      }
+
+      setInterval(createDrop, 180);
+    }
+
+    spawnPetals();
+    typeQuestion();
+    setTimeout(function () {
+      makeRunAway('nw1', 'arena1', 'escapesLabel');
+    }, 800);
+  </script>
+</body>
+</html>
