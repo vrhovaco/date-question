@@ -3,1484 +3,916 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FBI — POVJERLJIVO</title>
+<title>AMES — Automatski sistem za evaluaciju muškaraca</title>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --black: #040608;
-  --dark: #080c12;
-  --dark2: #0d1520;
-  --dark3: #111e2e;
-  --blue: #0a4a8f;
-  --blue2: #0d5fbb;
-  --blue-glow: #1a7fff;
-  --red: #cc1111;
-  --red2: #ff2020;
-  --red-glow: #ff4444;
-  --gold: #c8a84b;
-  --gold2: #e8c96a;
-  --text: #c8d8e8;
-  --text-dim: #5a7a9a;
-  --text-bright: #e8f4ff;
-  --green: #00ff88;
-  --green-dim: #00aa55;
+  --black:    #020305;
+  --dark:     #070b10;
+  --dark2:    #0c1219;
+  --dark3:    #111b27;
+  --red:      #c0160f;
+  --red2:     #e8261e;
+  --red-glow: #ff4433;
+  --orange:   #c84b00;
+  --orange2:  #e86000;
+  --amber:    #d4860a;
+  --amber2:   #f0a020;
+  --text:     #c8d4dc;
+  --text-dim: #4a6070;
+  --text-bright: #e8f0f8;
   --mono: 'Courier New', monospace;
+  --green: #00cc66;
 }
 
 html, body {
-  height: 100%;
+  min-height: 100%;
   background: var(--black);
   color: var(--text);
   font-family: var(--mono);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
-/* ── EFEKAT SKEN LINIJA ── */
+/* scanlines */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
   pointer-events: none;
-  z-index: 9999;
+  z-index: 9998;
 }
 
-/* ── SISTEM EKRANA ── */
-.screen {
-  display: none;
+/* ── GRID BG ── */
+.grid-bg {
   position: fixed;
   inset: 0;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  overflow: hidden;
-  padding: 1rem;
-}
-.screen.active { display: flex; }
-
-/* ── MREŽASTA POZADINA ── */
-.grid-bg {
-  position: absolute;
-  inset: 0;
   background-image:
-    linear-gradient(rgba(10,74,143,0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(10,74,143,0.07) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(rgba(200,22,15,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200,22,15,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
   pointer-events: none;
+  z-index: 0;
 }
 
-/* ── UGAONI UKRASI ── */
+/* ── TOP BAR ── */
+.top-bar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 38px;
+  background: rgba(7,11,16,0.97);
+  border-bottom: 1px solid rgba(200,22,15,0.4);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1rem;
+  z-index: 1000;
+  font-size: 0.58rem;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+}
+.top-bar .logo { color: var(--red2); font-weight: bold; letter-spacing: 0.25em; font-size: 0.65rem; }
+.top-bar .status { color: var(--amber2); animation: blink 1.4s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:0} }
+
+/* ── CORNER BRACKETS ── */
 .corners::before, .corners::after {
   content: '';
   position: fixed;
-  width: 60px;
-  height: 60px;
-  border-color: var(--blue2);
+  width: 50px; height: 50px;
+  border-color: rgba(200,22,15,0.5);
   border-style: solid;
   z-index: 100;
+  pointer-events: none;
 }
-.corners::before { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
+.corners::before { top: 46px; left: 12px; border-width: 2px 0 0 2px; }
 .corners::after  { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
 
-/* ── GORNJA TRAKA ── */
-.top-bar {
+/* ── NOTIFICATION TOAST ── */
+#notifContainer {
   position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 36px;
-  background: rgba(8,12,18,0.95);
-  border-bottom: 1px solid rgba(10,74,143,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 1rem;
-  z-index: 200;
-  font-size: 0.6rem;
-  color: var(--text-dim);
-  letter-spacing: 0.15em;
-}
-.top-bar .badge {
-  color: var(--gold);
-  font-weight: bold;
-  letter-spacing: 0.2em;
-}
-.blink { animation: blink 1.2s step-end infinite; }
-@keyframes blink { 0%,100%{opacity:1}50%{opacity:0} }
-
-/* ── FBI PEČAT ── */
-.fbi-seal {
-  width: 80px; height: 80px;
-  border: 2px solid var(--gold);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  margin-bottom: 1.5rem;
-  position: relative;
-  box-shadow: 0 0 20px rgba(200,168,75,0.3), inset 0 0 20px rgba(200,168,75,0.05);
-}
-.fbi-seal::before {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  border: 1px dashed rgba(200,168,75,0.4);
-  border-radius: 50%;
-  animation: rotateSlow 20s linear infinite;
-}
-@keyframes rotateSlow { to { transform: rotate(360deg); } }
-.fbi-seal span { font-size: 1.4rem; font-weight: bold; color: var(--gold); letter-spacing: 0.1em; }
-.fbi-seal small { font-size: 0.45rem; color: var(--gold2); letter-spacing: 0.2em; }
-
-/* ── EKRAN 1: POKRETANJE ── */
-#s1 { background: var(--black); }
-
-.boot-title {
-  font-size: clamp(0.9rem, 2.5vw, 1.2rem);
-  color: var(--gold2);
-  letter-spacing: 0.3em;
-  text-align: center;
-  margin-bottom: 0.5rem;
-}
-.boot-sub {
-  font-size: clamp(0.55rem, 1.5vw, 0.7rem);
-  color: var(--text-dim);
-  letter-spacing: 0.2em;
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.terminal-box {
-  width: min(500px, 92vw);
-  background: rgba(8,12,18,0.9);
-  border: 1px solid var(--blue2);
-  padding: 1.5rem;
-  position: relative;
-  box-shadow: 0 0 30px rgba(10,74,143,0.2);
-}
-.terminal-box::before {
-  content: 'TERMINAL v4.1.9';
-  position: absolute;
-  top: -10px; left: 16px;
-  background: var(--black);
-  padding: 0 8px;
-  font-size: 0.55rem;
-  color: var(--blue2);
-  letter-spacing: 0.15em;
-}
-
-.terminal-line {
-  font-size: clamp(0.65rem, 1.8vw, 0.78rem);
-  line-height: 1.9;
-  opacity: 0;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.terminal-line.show { opacity: 1; }
-.terminal-line.green { color: var(--green); }
-.terminal-line.red   { color: var(--red2); }
-.terminal-line.gold  { color: var(--gold2); }
-.terminal-line.dim   { color: var(--text-dim); }
-
-.progress-wrap {
-  margin-top: 1.2rem;
-  position: relative;
-}
-.progress-label {
-  font-size: 0.6rem;
-  color: var(--text-dim);
-  letter-spacing: 0.15em;
-  margin-bottom: 4px;
-  display: flex;
-  justify-content: space-between;
-}
-.progress-track {
-  height: 6px;
-  background: rgba(10,74,143,0.2);
-  border: 1px solid rgba(10,74,143,0.4);
-  position: relative;
-  overflow: hidden;
-}
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--blue), var(--blue-glow));
-  width: 0%;
-  transition: width 0.1s linear;
-  position: relative;
-}
-.progress-fill::after {
-  content: '';
-  position: absolute;
-  right: 0; top: 0; bottom: 0;
-  width: 20px;
-  background: rgba(255,255,255,0.4);
-  filter: blur(4px);
-}
-
-.scan-target {
-  margin-top: 1.5rem;
-  text-align: center;
-  display: none;
-}
-.scan-box {
-  display: inline-block;
-  border: 2px solid var(--red2);
-  padding: 0.6rem 1.2rem;
-  position: relative;
-  font-size: clamp(0.75rem, 2vw, 0.9rem);
-  color: var(--red2);
-  letter-spacing: 0.2em;
-  animation: scanPulse 1s ease-in-out infinite;
-}
-@keyframes scanPulse {
-  0%,100%{ box-shadow: 0 0 8px var(--red), inset 0 0 8px rgba(204,17,17,0.1); }
-  50%    { box-shadow: 0 0 20px var(--red2), inset 0 0 20px rgba(204,17,17,0.2); }
-}
-.scan-line {
-  position: absolute;
-  left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--red2), transparent);
-  animation: scanMove 1.5s ease-in-out infinite;
-}
-@keyframes scanMove {
-  0%  { top: 0; opacity: 1; }
-  100%{ top: 100%; opacity: 0.3; }
-}
-
-/* ── EKRAN 2: PROFIL ── */
-#s2 { background: var(--dark); }
-
-.profile-card {
-  width: min(520px, 92vw);
-  background: rgba(8,12,18,0.95);
-  border: 1px solid rgba(10,74,143,0.6);
-  position: relative;
-  box-shadow: 0 0 40px rgba(10,74,143,0.15);
-}
-.profile-header {
-  background: rgba(10,74,143,0.25);
-  border-bottom: 1px solid rgba(10,74,143,0.5);
-  padding: 0.75rem 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.profile-header-title {
-  font-size: clamp(0.6rem, 1.8vw, 0.75rem);
-  color: var(--gold);
-  letter-spacing: 0.25em;
-}
-.profile-id {
-  font-size: 0.55rem;
-  color: var(--text-dim);
-  letter-spacing: 0.1em;
-}
-
-.photo-placeholder {
-  width: 90px; height: 110px;
-  background: rgba(10,74,143,0.1);
-  border: 1px solid rgba(10,74,143,0.4);
-  display: flex; align-items: center; justify-content: center;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-.photo-placeholder span { font-size: 2rem; }
-.photo-placeholder small { font-size: 0.45rem; color: var(--text-dim); letter-spacing: 0.1em; margin-top: 4px; }
-
-.profile-body { padding: 1.25rem; display: flex; gap: 1rem; }
-.profile-fields { flex: 1; }
-
-.field-row {
-  margin-bottom: 0.85rem;
-  opacity: 0;
-  transform: translateX(-10px);
-  transition: all 0.4s ease;
-}
-.field-row.show { opacity: 1; transform: translateX(0); }
-.field-label {
-  font-size: 0.55rem;
-  color: var(--text-dim);
-  letter-spacing: 0.2em;
-  margin-bottom: 2px;
-  text-transform: uppercase;
-}
-.field-value {
-  font-size: clamp(0.7rem, 2vw, 0.85rem);
-  color: var(--text-bright);
-  letter-spacing: 0.05em;
-}
-.field-value.redacted {
-  background: var(--text-bright);
-  color: var(--text-bright);
-  user-select: none;
-  display: inline-block;
-  padding: 0 4px;
-  letter-spacing: 0.1em;
-}
-.field-value.danger { color: var(--red2); font-weight: bold; letter-spacing: 0.15em; }
-.field-value.critical { color: var(--red-glow); animation: criticalPulse 1.5s ease-in-out infinite; }
-@keyframes criticalPulse {
-  0%,100%{ opacity:1; } 50%{ opacity:0.6; }
-}
-
-.profile-footer {
-  border-top: 1px solid rgba(10,74,143,0.4);
-  padding: 0.75rem 1.25rem;
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* ── EKRAN 3: DOKAZI ── */
-#s3 { background: var(--dark); flex-direction: column; overflow-y: auto; padding-top: 50px; }
-
-.board-title {
-  font-size: clamp(0.7rem, 2vw, 0.85rem);
-  color: var(--gold);
-  letter-spacing: 0.3em;
-  text-align: center;
-  margin-bottom: 0.25rem;
-}
-.board-sub {
-  font-size: 0.55rem;
-  color: var(--text-dim);
-  letter-spacing: 0.2em;
-  text-align: center;
-  margin-bottom: 1.5rem;
-}
-
-.evidence-board {
-  width: min(700px, 95vw);
-  position: relative;
-}
-
-.evidence-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.evidence-card {
-  background: rgba(8,12,18,0.95);
-  border: 1px solid rgba(10,74,143,0.4);
-  padding: 1rem;
-  position: relative;
-  opacity: 0;
-  transform: scale(0.9) rotate(-1deg);
-  transition: all 0.5s cubic-bezier(0.22,1,0.36,1);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-}
-.evidence-card.show {
-  opacity: 1;
-  transform: scale(1) rotate(0deg);
-}
-.evidence-card:nth-child(even) { transform: scale(0.9) rotate(1deg); }
-.evidence-card:nth-child(even).show { transform: scale(1) rotate(0deg); }
-
-.evidence-tag {
-  position: absolute;
-  top: -10px; left: 12px;
-  background: var(--red);
-  color: white;
-  font-size: 0.5rem;
-  letter-spacing: 0.15em;
-  padding: 2px 8px;
-}
-.evidence-num {
-  font-size: 0.6rem;
-  color: var(--text-dim);
-  letter-spacing: 0.15em;
-  margin-bottom: 0.4rem;
-}
-.evidence-icon { font-size: 1.6rem; margin-bottom: 0.4rem; display: block; }
-.evidence-text {
-  font-size: clamp(0.65rem, 1.8vw, 0.75rem);
-  color: var(--text);
-  line-height: 1.5;
-}
-.evidence-stamp {
-  position: absolute;
-  bottom: 8px; right: 8px;
-  font-size: 0.45rem;
-  color: rgba(10,74,143,0.5);
-  letter-spacing: 0.1em;
-}
-
-.red-string {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 50px; right: 1rem;
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 5000;
   pointer-events: none;
-  overflow: visible;
 }
-
-/* ── EKRAN 4: ANALIZA ── */
-#s4 { background: var(--dark); }
-
-.analysis-box {
-  width: min(500px, 92vw);
+.notif {
+  background: rgba(10,15,22,0.97);
+  border-left: 3px solid var(--orange2);
+  padding: 0.6rem 1rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--text);
+  max-width: 280px;
+  animation: notifIn 0.3s ease both, notifOut 0.4s ease 3.6s both;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
-.analysis-title {
-  font-size: clamp(0.75rem, 2vw, 0.9rem);
-  color: var(--gold);
-  letter-spacing: 0.25em;
-  text-align: center;
-  margin-bottom: 1.5rem;
-}
+.notif .ntitle { color: var(--orange2); font-size: 0.55rem; letter-spacing: 0.2em; margin-bottom: 3px; }
+@keyframes notifIn  { from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none} }
+@keyframes notifOut { from{opacity:1;transform:none}to{opacity:0;transform:translateX(20px)} }
 
-.analysis-item {
-  display: flex;
+/* ── SCREENS ── */
+.screen {
+  display: none;
+  min-height: 100vh;
+  padding: 60px 1.5rem 2rem;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-  opacity: 0;
-  transform: translateX(-15px);
-  transition: all 0.4s ease;
+  justify-content: center;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
 }
-.analysis-item.show { opacity: 1; transform: translateX(0); }
-.analysis-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--blue2);
-  flex-shrink: 0;
-  animation: dotPulse 1.5s ease-in-out infinite;
+.screen.active { display: flex; animation: screenIn 0.5s ease both; }
+@keyframes screenIn {
+  from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}
 }
-.analysis-dot.done { background: var(--green); animation: none; }
-.analysis-dot.zero { background: var(--red2); animation: none; }
-@keyframes dotPulse { 0%,100%{opacity:1}50%{opacity:0.3} }
-.analysis-label {
-  font-size: clamp(0.65rem, 1.8vw, 0.78rem);
-  color: var(--text);
-  flex: 1;
-}
-.analysis-status {
-  font-size: 0.6rem;
-  color: var(--green);
-  letter-spacing: 0.1em;
-}
-.analysis-status.pending { color: var(--text-dim); }
-.analysis-status.zero { color: var(--red2); font-weight: bold; letter-spacing: 0.2em; }
 
-.zero-results {
-  margin-top: 1.5rem;
+/* ── HEADER ── */
+.site-header {
   text-align: center;
-  opacity: 0;
-  transition: opacity 0.6s ease;
-}
-.zero-results.show { opacity: 1; }
-.zero-big {
-  font-size: clamp(2rem, 8vw, 3.5rem);
-  color: var(--red2);
-  font-weight: bold;
-  display: block;
-  text-shadow: 0 0 20px var(--red);
-}
-.zero-sub {
-  font-size: 0.65rem;
-  color: var(--text-dim);
-  letter-spacing: 0.2em;
-}
-
-/* ── EKRAN 5: UPOZORENJE ── */
-#s5 { background: var(--dark); }
-@keyframes flashRed {
-  0%,100%{ background: var(--dark); }
-  50%    { background: rgba(180,0,0,0.15); }
-}
-
-.alert-box {
-  text-align: center;
-  width: min(500px, 90vw);
-}
-.alert-warning {
-  font-size: clamp(1.2rem, 5vw, 2.2rem);
-  color: var(--red2);
-  letter-spacing: 0.3em;
-  font-weight: bold;
-  text-shadow: 0 0 30px var(--red);
-  animation: alertPulse 0.8s ease-in-out infinite;
-  margin-bottom: 0.5rem;
-}
-@keyframes alertPulse {
-  0%,100%{ text-shadow: 0 0 20px var(--red); opacity:1; }
-  50%    { text-shadow: 0 0 50px var(--red2); opacity:0.8; }
-}
-.alert-sub {
-  font-size: clamp(0.65rem, 1.8vw, 0.8rem);
-  color: var(--text-dim);
-  letter-spacing: 0.2em;
   margin-bottom: 2rem;
 }
-.alert-bars {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-  margin-bottom: 2rem;
+.site-header .dept {
+  font-size: 0.5rem; color: var(--text-dim); letter-spacing: 0.3em; margin-bottom: 0.4rem;
 }
-.alert-bar {
-  width: 6px;
-  background: var(--red2);
-  animation: barAnim 0.6s ease-in-out infinite;
-  box-shadow: 0 0 8px var(--red);
-}
-.alert-bar:nth-child(1){ height: 20px; animation-delay: 0s; }
-.alert-bar:nth-child(2){ height: 35px; animation-delay: 0.1s; }
-.alert-bar:nth-child(3){ height: 50px; animation-delay: 0.2s; }
-.alert-bar:nth-child(4){ height: 35px; animation-delay: 0.3s; }
-.alert-bar:nth-child(5){ height: 20px; animation-delay: 0.4s; }
-@keyframes barAnim { 0%,100%{opacity:1}50%{opacity:0.3} }
-
-.alert-finding {
-  font-size: clamp(0.8rem, 2.5vw, 1rem);
-  color: var(--text-bright);
-  letter-spacing: 0.1em;
-  line-height: 1.7;
-  opacity: 0;
-  transition: opacity 0.8s ease;
-  font-style: italic;
-  border: 1px solid rgba(10,74,143,0.4);
-  padding: 1rem 1.5rem;
-  background: rgba(8,12,18,0.8);
-}
-.alert-finding.show { opacity: 1; }
-
-/* ── SCREEN 6: POVJERLJIVO ── */
-#s6 { background: var(--dark); }
-
-.classified-doc {
-  width: min(480px, 92vw);
-  background: rgba(8,12,18,0.95);
-  border: 2px solid rgba(10,74,143,0.5);
-  padding: 2rem;
-  position: relative;
-  text-align: center;
-  box-shadow: 0 0 50px rgba(10,74,143,0.1);
-}
-
-.classified-header {
-  border-bottom: 1px solid rgba(200,168,75,0.3);
-  padding-bottom: 1rem;
-  margin-bottom: 1.5rem;
-}
-.doc-ref {
-  font-size: 0.5rem;
-  color: var(--text-dim);
-  letter-spacing: 0.2em;
-  margin-bottom: 0.5rem;
-}
-
-.top-secret-stamp {
-  display: inline-block;
-  border: 3px solid var(--red2);
+.site-header h1 {
+  font-size: clamp(1rem, 3.5vw, 1.5rem);
   color: var(--red2);
-  font-size: clamp(1.2rem, 4vw, 1.8rem);
-  font-weight: bold;
-  letter-spacing: 0.3em;
-  padding: 0.3rem 1rem;
-  transform: rotate(-3deg);
-  margin: 1rem 0;
-  position: relative;
-  box-shadow: 0 0 20px rgba(204,17,17,0.3), inset 0 0 20px rgba(204,17,17,0.05);
-  opacity: 0;
-  transition: all 0.5s ease;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 20px rgba(232,38,30,0.4);
+  margin-bottom: 0.3rem;
 }
-.top-secret-stamp.show { opacity: 1; }
-
-.doc-body { font-size: clamp(0.7rem, 2vw, 0.82rem); color: var(--text); line-height: 2; }
-.doc-body .redline {
-  display: inline-block;
-  width: 80%;
-  height: 1px;
-  background: rgba(200,168,75,0.3);
-  margin: 0.5rem 0;
-}
-.recommendation {
-  margin: 1rem 0;
-  font-size: clamp(0.8rem, 2.5vw, 1rem);
-  color: var(--gold2);
-  letter-spacing: 0.1em;
-  line-height: 1.8;
-  opacity: 0;
-  transition: opacity 0.8s ease;
-}
-.recommendation.show { opacity: 1; }
-
-.classification-bars {
-  display: flex;
-  gap: 4px;
-  margin-top: 1.5rem;
-}
-.cbar { flex: 1; height: 4px; }
-.cbar:nth-child(1){ background: var(--red2); }
-.cbar:nth-child(2){ background: var(--gold); }
-.cbar:nth-child(3){ background: var(--blue2); }
-.cbar:nth-child(4){ background: var(--red2); }
-.cbar:nth-child(5){ background: var(--gold); }
-
-/* ── EKRAN 7: MISIJA ── */
-#s7 { background: var(--dark); }
-
-.mission-card {
-  width: min(520px, 92vw);
-  background: rgba(8,12,18,0.95);
-  border: 1px solid rgba(10,74,143,0.5);
-  position: relative;
-}
-.mission-header {
-  background: rgba(200,168,75,0.1);
-  border-bottom: 1px solid rgba(200,168,75,0.3);
-  padding: 0.75rem 1.25rem;
-  display: flex; align-items: center; gap: 0.75rem;
-}
-.mission-icon { font-size: 1.2rem; }
-.mission-title {
-  font-size: clamp(0.65rem, 1.8vw, 0.78rem);
-  color: var(--gold2);
-  letter-spacing: 0.25em;
-}
-
-.mission-body { padding: 1.5rem; }
-
-.mission-row {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.5rem 1rem;
-  align-items: start;
-  margin-bottom: 1rem;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-.mission-row.show { opacity: 1; }
-.mission-key {
-  font-size: 0.55rem;
+.site-header .sub {
+  font-size: clamp(0.58rem, 1.6vw, 0.68rem);
   color: var(--text-dim);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  padding-top: 2px;
-  white-space: nowrap;
-}
-.mission-val {
-  font-size: clamp(0.68rem, 1.8vw, 0.8rem);
-  color: var(--text-bright);
-  line-height: 1.6;
-}
-.mission-val.highlight { color: var(--gold2); }
-.mission-val.unknown   { color: var(--text-dim); font-style: italic; }
-
-.mission-divider {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(10,74,143,0.5), transparent);
-  margin: 1rem 0;
-}
-
-.accept-q {
-  text-align: center;
-  font-size: clamp(0.75rem, 2vw, 0.9rem);
-  color: var(--text-bright);
   letter-spacing: 0.15em;
-  margin-bottom: 1.25rem;
-  opacity: 0;
-  transition: opacity 0.5s ease;
 }
-.accept-q.show { opacity: 1; }
 
-.mission-buttons {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: center;
+/* ── CARD ── */
+.card {
+  width: min(580px, 95vw);
+  background: rgba(7,11,16,0.97);
+  border: 1px solid rgba(200,22,15,0.3);
+  padding: 1.75rem;
   position: relative;
-  min-height: 60px;
+  box-shadow: 0 0 40px rgba(200,22,15,0.08);
 }
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--red2), var(--orange2), transparent);
+}
+.card-header {
+  font-size: 0.55rem; color: var(--text-dim); letter-spacing: 0.25em;
+  border-bottom: 1px solid rgba(200,22,15,0.2);
+  padding-bottom: 0.6rem; margin-bottom: 1.25rem;
+  display: flex; justify-content: space-between;
+}
+.card-header .ref { color: var(--amber); }
 
-#btn-accept {
-  background: transparent;
-  border: 2px solid var(--green);
-  color: var(--green);
-  font-family: var(--mono);
-  font-size: clamp(0.7rem, 2vw, 0.82rem);
-  letter-spacing: 0.2em;
-  padding: 0.75rem 2rem;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.2s ease;
-  box-shadow: 0 0 15px rgba(0,255,136,0.2);
-  z-index: 2;
+/* ── PROGRESS BAR ── */
+.prog-wrap { margin-bottom: 0.5rem; }
+.prog-label {
+  display: flex; justify-content: space-between;
+  font-size: 0.55rem; color: var(--text-dim); letter-spacing: 0.12em; margin-bottom: 4px;
 }
-#btn-accept:hover {
-  background: rgba(0,255,136,0.1);
-  box-shadow: 0 0 25px rgba(0,255,136,0.4);
+.prog-track {
+  height: 6px;
+  background: rgba(200,22,15,0.12);
+  border: 1px solid rgba(200,22,15,0.25);
+  overflow: hidden;
 }
-
-#btn-decline {
-  background: transparent;
-  border: 1px solid rgba(204,17,17,0.5);
-  color: rgba(204,17,17,0.7);
-  font-family: var(--mono);
-  font-size: clamp(0.6rem, 1.8vw, 0.75rem);
-  letter-spacing: 0.15em;
-  padding: 0.75rem 1.5rem;
-  cursor: pointer;
-  position: fixed;
-  z-index: 999;
-  white-space: nowrap;
-  transition: border-color 0.2s, color 0.2s;
-}
-
-.decline-msg {
-  text-align: center;
-  font-size: 0.6rem;
-  color: var(--red2);
-  letter-spacing: 0.15em;
-  min-height: 1.2em;
-  margin-bottom: 0.5rem;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.decline-msg.show { opacity: 1; }
-
-/* ── EKRAN 8: SLAVLJE ── */
-#s8 {
-  background: linear-gradient(135deg, #0d0408, #1a0812, #0d0408);
-  transition: background 1s ease;
-  overflow-y: auto;
-  padding-top: 50px;
-}
-#s8.warm {
-  background: linear-gradient(135deg, #1a0510, #2d1020, #1a0510);
-}
-
-.celebration-content {
-  text-align: center;
-  width: min(520px, 92vw);
+.prog-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--red), var(--orange2));
+  transition: width 0.12s linear;
   position: relative;
 }
-
-.case-closed {
-  font-size: clamp(0.7rem, 2vw, 0.85rem);
-  color: var(--gold2);
-  letter-spacing: 0.4em;
-  margin-bottom: 0.75rem;
-  animation: fadeIn 0.6s ease both;
+.prog-fill::after {
+  content: '';
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: 16px;
+  background: rgba(255,255,255,0.35);
+  filter: blur(3px);
 }
 
-.big-heart { font-size: clamp(3rem, 12vw, 5rem); animation: heartBeat 1.2s ease-in-out infinite; display: block; margin-bottom: 1rem; }
-@keyframes heartBeat {
-  0%,100%{ transform: scale(1); }
-  15%    { transform: scale(1.2); }
-  30%    { transform: scale(1.05); }
-  45%    { transform: scale(1.15); }
-}
-
-.reveal-text {
-  font-size: clamp(0.78rem, 2.2vw, 0.95rem);
-  color: var(--text);
+/* ── TERMINAL LINES ── */
+.term-line {
+  font-size: clamp(0.65rem, 1.8vw, 0.75rem);
   line-height: 2;
   opacity: 0;
-  animation: fadeIn 0.8s ease both;
+  transition: opacity 0.3s;
+  display: flex; align-items: center; gap: 8px;
 }
-.reveal-text em { color: var(--gold2); font-style: normal; }
+.term-line.show { opacity: 1; }
+.term-line .dot { width:6px;height:6px;border-radius:50%;background:var(--text-dim);flex-shrink:0; }
+.term-line .dot.ok { background:var(--green); }
+.term-line .dot.warn { background:var(--amber2); }
+.term-line .dot.err { background:var(--red2); }
+.term-line.green { color: var(--green); }
+.term-line.amber { color: var(--amber2); }
+.term-line.red   { color: var(--red2); }
+.term-line.dim   { color: var(--text-dim); }
 
-.final-question {
-  margin: 1.5rem 0 1rem;
-  font-size: clamp(1rem, 3vw, 1.3rem);
-  color: #ffb3c6;
-  letter-spacing: 0.05em;
-  line-height: 1.6;
-  opacity: 0;
-  animation: fadeIn 1s ease both;
-  font-family: Georgia, serif;
+/* ── STATS ── */
+.stat-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-bottom: 0.85rem;
+  opacity: 0; transform: translateX(-10px);
+  transition: all 0.4s ease;
 }
+.stat-row.show { opacity:1; transform:none; }
+.stat-label { font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.12em; width: 160px; flex-shrink:0; }
+.stat-bar-wrap { flex:1; height:8px; background:rgba(200,22,15,0.12); border:1px solid rgba(200,22,15,0.2); overflow:hidden; }
+.stat-bar-fill { height:100%; background:linear-gradient(90deg,var(--red),var(--orange2)); width:0%; transition:width 1s cubic-bezier(0.22,1,0.36,1); }
+.stat-pct { font-size:0.65rem; color:var(--red2); width:36px; text-align:right; flex-shrink:0; }
 
-.names-line {
-  font-size: clamp(0.65rem, 1.8vw, 0.78rem);
-  color: rgba(255,179,198,0.6);
-  letter-spacing: 0.15em;
-  margin-bottom: 1.5rem;
-  opacity: 0;
-  animation: fadeIn 1.2s ease both;
+.success-row {
+  margin-top:1.5rem; text-align:center;
+  opacity:0; transition:opacity 0.6s;
 }
+.success-row.show { opacity:1; }
+.success-label { font-size:0.6rem; color:var(--text-dim); letter-spacing:0.2em; margin-bottom:0.5rem; }
+.success-num {
+  font-size: clamp(2rem, 8vw, 3.2rem);
+  color: var(--red2);
+  font-weight: bold;
+  text-shadow: 0 0 30px rgba(232,38,30,0.5);
+  animation: numPulse 1.8s ease-in-out infinite;
+}
+@keyframes numPulse { 0%,100%{opacity:1}50%{opacity:0.7} }
 
-.floating-hearts {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
+/* ── UPOZORENJES ── */
+.warn-item {
+  display:flex; align-items:flex-start; gap:0.75rem;
+  padding:0.75rem;
+  border:1px solid rgba(200,100,0,0.25);
+  background:rgba(200,100,0,0.04);
+  margin-bottom:0.6rem;
+  opacity:0; transform:translateY(8px);
+  transition:all 0.4s ease;
 }
-.fheart {
-  position: absolute;
-  font-size: 1.2rem;
-  animation: floatHeart linear forwards;
-  opacity: 0;
-}
-@keyframes floatHeart {
-  0%  { opacity: 0; transform: translateY(0) rotate(0deg) scale(0.5); }
-  10% { opacity: 0.8; }
-  90% { opacity: 0.4; }
-  100%{ opacity: 0; transform: translateY(-100vh) rotate(360deg) scale(1.2); }
-}
+.warn-item.show { opacity:1; transform:none; }
+.warn-icon { font-size:1rem; flex-shrink:0; margin-top:1px; }
+.warn-text { font-size:clamp(0.65rem,1.8vw,0.75rem); color:var(--text); line-height:1.5; }
+.warn-code { font-size:0.5rem; color:var(--text-dim); letter-spacing:0.15em; margin-top:2px; }
 
-.confetti-p {
-  position: fixed;
-  width: 8px; height: 8px;
-  border-radius: 1px;
-  pointer-events: none;
-  z-index: 2;
-  animation: confettiFall linear forwards;
+/* ── AI ANALYSIS ── */
+.ai-box {
+  border:1px solid rgba(200,22,15,0.3);
+  padding:1.25rem;
+  background:rgba(200,22,15,0.03);
+  position:relative; margin-top:1rem;
 }
-@keyframes confettiFall {
-  0%  { opacity: 1; transform: translateY(-10px) rotate(0deg); }
-  100%{ opacity: 0; transform: translateY(110vh) rotate(720deg); }
+.ai-box::before {
+  content:'AI CORE v3.7.1';
+  position:absolute; top:-9px; left:12px;
+  background:var(--dark); padding:0 8px;
+  font-size:0.5rem; color:var(--red2); letter-spacing:0.15em;
 }
+.ai-text {
+  font-size:clamp(0.7rem,2vw,0.85rem);
+  color:var(--text-bright); line-height:1.9;
+  font-style:italic; opacity:0; transition:opacity 0.8s;
+}
+.ai-text.show { opacity:1; }
+.ai-conclusion {
+  margin-top:0.75rem; padding-top:0.75rem;
+  border-top:1px solid rgba(200,22,15,0.2);
+  font-size:clamp(0.7rem,2vw,0.85rem);
+  color:var(--orange2); letter-spacing:0.1em;
+  opacity:0; transition:opacity 0.8s;
+}
+.ai-conclusion.show { opacity:1; }
 
-@keyframes fadeIn { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none} }
+/* ── APPEAL ── */
+.appeal-track {
+  display:flex; flex-direction:column; gap:1rem; margin-top:1.5rem;
+}
+.appeal-step {
+  border:1px solid rgba(200,22,15,0.25);
+  padding:1rem 1.25rem;
+  position:relative;
+  opacity:0; transform:translateY(10px);
+  transition:all 0.5s ease;
+}
+.appeal-step.show { opacity:1; transform:none; }
+.appeal-step-num {
+  position:absolute; top:-9px; left:12px;
+  background:var(--dark); padding:0 8px;
+  font-size:0.5rem; color:var(--text-dim); letter-spacing:0.15em;
+}
+.appeal-q { font-size:clamp(0.65rem,1.8vw,0.75rem); color:var(--text); margin-bottom:0.75rem; line-height:1.6; }
+.appeal-result {
+  font-size:clamp(0.65rem,1.8vw,0.75rem);
+  color:var(--red2); letter-spacing:0.1em;
+  padding:0.4rem 0.75rem;
+  border:1px solid rgba(200,22,15,0.4);
+  background:rgba(200,22,15,0.06);
+  display:none; margin-top:0.5rem;
+  animation:fadeIn 0.4s ease both;
+}
+.appeal-result.show { display:block; }
+.appeal-result.orange { color:var(--orange2); border-color:rgba(232,96,0,0.4); background:rgba(232,96,0,0.05); }
+.appeal-result.amber  { color:var(--amber2);  border-color:rgba(212,134,10,0.4); background:rgba(212,134,10,0.05); }
 
-/* ── ZAJEDNIČKI STIL DUGMETA ── */
-.btn-fbi {
+/* ── BUTTONS ── */
+.btn {
   background: transparent;
-  border: 1px solid rgba(10,74,143,0.8);
-  color: var(--blue-glow);
+  border: 1px solid rgba(200,22,15,0.6);
+  color: var(--red2);
   font-family: var(--mono);
-  font-size: clamp(0.6rem, 1.8vw, 0.72rem);
-  letter-spacing: 0.25em;
+  font-size: clamp(0.6rem,1.8vw,0.72rem);
+  letter-spacing: 0.2em;
   padding: 0.65rem 1.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 0 12px rgba(10,74,143,0.15);
   text-transform: uppercase;
 }
-.btn-fbi:hover {
-  background: rgba(10,74,143,0.15);
-  border-color: var(--blue-glow);
-  box-shadow: 0 0 20px rgba(26,127,255,0.3);
+.btn:hover { background:rgba(200,22,15,0.1); border-color:var(--red2); box-shadow:0 0 16px rgba(200,22,15,0.2); }
+.btn.orange { border-color:rgba(232,96,0,0.6); color:var(--orange2); }
+.btn.orange:hover { background:rgba(232,96,0,0.1); }
+.btn.amber  { border-color:rgba(212,134,10,0.6); color:var(--amber2); }
+.btn.amber:hover  { background:rgba(212,134,10,0.1); }
+
+/* ── ACHIEVEMENTS ── */
+.badge-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-top:1.25rem; }
+.badge {
+  border:1px solid rgba(200,22,15,0.25);
+  padding:0.75rem;
+  display:flex; gap:0.75rem; align-items:flex-start;
+  opacity:0; transform:scale(0.93);
+  transition:all 0.4s ease;
+  background:rgba(200,22,15,0.02);
+}
+.badge.show { opacity:1; transform:none; }
+.badge-icon { font-size:1.4rem; flex-shrink:0; }
+.badge-name { font-size:0.58rem; color:var(--amber2); letter-spacing:0.1em; margin-bottom:2px; }
+.badge-desc { font-size:0.55rem; color:var(--text-dim); line-height:1.5; }
+
+/* ── DENIED STAMP ── */
+#s6 { background:var(--dark); }
+.denied-stamp {
+  border: 5px solid var(--red2);
+  color: var(--red2);
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  font-weight: bold;
+  letter-spacing: 0.25em;
+  padding: 0.4rem 1.5rem;
+  transform: rotate(-8deg);
+  display: inline-block;
+  box-shadow: 0 0 40px rgba(232,38,30,0.35), inset 0 0 40px rgba(232,38,30,0.06);
+  text-shadow: 0 0 20px var(--red);
+  margin-bottom: 2rem;
+  animation: stampIn 0.6s cubic-bezier(0.22,1,0.36,1) both, stampPulse 2s ease-in-out 0.6s infinite;
+}
+@keyframes stampIn { from{opacity:0;transform:rotate(-8deg) scale(2)}to{opacity:1;transform:rotate(-8deg) scale(1)} }
+@keyframes stampPulse { 0%,100%{box-shadow:0 0 40px rgba(232,38,30,0.35)}50%{box-shadow:0 0 60px rgba(232,38,30,0.55)} }
+
+.denied-text { font-size:clamp(0.7rem,2vw,0.82rem); color:var(--text); line-height:2.2; text-align:center; }
+.denied-text em { color:var(--orange2); font-style:normal; }
+.ticket-box {
+  width:min(380px,92vw);
+  border:1px dashed rgba(200,22,15,0.35);
+  padding:1rem 1.25rem; margin-top:1.5rem;
+  font-size:0.58rem; color:var(--text-dim); letter-spacing:0.12em; line-height:2;
+  position:relative;
+}
+.ticket-box::before { content:'PODRŠKA — ZAHTJEV #00132847'; position:absolute; top:-9px; left:12px; background:var(--dark); padding:0 8px; font-size:0.5rem; color:var(--text-dim); }
+.ticket-box .ticket-val { color:var(--text); }
+
+/* ── CONFETTI ── */
+.cfp {
+  position:fixed; pointer-events:none; z-index:9000;
+  border-radius:1px;
+  animation:cfFall linear forwards;
+}
+@keyframes cfFall {
+  0%  { opacity:1; transform:translateY(-10px) rotate(0deg); }
+  100%{ opacity:0; transform:translateY(110vh) rotate(640deg); }
 }
 
-/* ── SKROL TRAKA ── */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--black); }
-::-webkit-scrollbar-thumb { background: var(--blue); border-radius: 2px; }
-
-/* ── GLITCH EFEKAT ── */
+/* ── GLITCH ── */
 @keyframes glitch {
-  0%,100%{ clip-path: inset(0 0 100% 0); transform: none; }
-  20%{ clip-path: inset(20% 0 60% 0); transform: skewX(-2deg); }
-  40%{ clip-path: inset(60% 0 10% 0); transform: skewX(2deg); }
-  60%{ clip-path: inset(40% 0 40% 0); transform: skewX(-1deg); }
-  80%{ clip-path: inset(80% 0 5% 0); transform: skewX(1deg); }
+  0%,100%{transform:none;filter:none}
+  20%    {transform:skewX(-3deg);filter:hue-rotate(60deg)}
+  40%    {transform:skewX(2deg);filter:hue-rotate(-40deg)}
+  60%    {transform:none;filter:brightness(1.4)}
 }
+.glitch { animation:glitch 0.25s ease; }
+
+/* ── MISC ── */
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none} }
+.section-title {
+  font-size:clamp(0.65rem,2vw,0.78rem);
+  color:var(--amber2); letter-spacing:0.25em;
+  text-align:center; margin-bottom:1.25rem;
+}
+.divider { height:1px; background:linear-gradient(90deg,transparent,rgba(200,22,15,0.35),transparent); margin:1.25rem 0; }
+.ref-tag { font-size:0.5rem; color:var(--text-dim); letter-spacing:0.15em; text-align:right; margin-top:1rem; }
 </style>
 </head>
-<body>
+<body class="corners">
+<div class="grid-bg"></div>
 
-<!-- GORNJA TRAKA (visible on all screens) -->
+<!-- TOP BAR -->
 <div class="top-bar">
-  <span class="badge">FBI — POVJERLJIVA BAZA</span>
-  <span id="topTime">00:00:00</span>
-  <span class="blink" style="color:var(--red2);">● SIGURNA KONEKCIJA</span>
+  <span class="logo">AMES — DRŽAVNI PORTAL ZA ODBIJANJE v2.4</span>
+  <span id="clock">00:00:00</span>
+  <span class="status">● OBRADA</span>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     SCREEN 1 — BOOT / LOADING
-═══════════════════════════════════════════ -->
-<div class="screen active corners" id="s1">
-  <div class="grid-bg"></div>
-  <div class="fbi-seal">
-    <span>FBI</span>
-    <small>OD 1908</small>
+<!-- NOTIFICATION CONTAINER -->
+<div id="notifContainer"></div>
+
+<!-- ════════════════════════════════════
+     SCREEN 1 — LOADING
+════════════════════════════════════ -->
+<div class="screen active" id="s1">
+  <div class="site-header">
+    <div class="dept">ODJELJENJE ZA DIGITALNE GRANICE — OSN. 2024</div>
+    <h1>AUTOMATSKI SISTEM ZA EVALUACIJU MUŠKARACA</h1>
+    <div class="sub">Molimo sačekajte dok sistem procjenjuje vaše šanse.</div>
   </div>
-  <div class="boot-title">SAVEZNA ISTRAŽNA BAZA PODATAKA</div>
-  <div class="boot-sub">PRISTUP DOSIJEU... — NIVO DOZVOLE: ALFA</div>
 
-  <div class="terminal-box">
-    <div class="terminal-line dim" id="t0">&gt; Pokretanje sigurne konekcije...</div>
-    <div class="terminal-line green" id="t1">&gt; Konekcija uspostavljena. [OK]</div>
-    <div class="terminal-line dim" id="t2">&gt; Učitavanje povjerljive baze podataka...</div>
-    <div class="terminal-line green" id="t3">&gt; Autentifikacija potvrđena. [OK]</div>
-    <div class="terminal-line gold" id="t4">&gt; Pronalaženje ciljnog dosijea...</div>
-    <div class="terminal-line red" id="t5">&gt; UPOZORENJE: Dosije označen kao OSJETLJIV</div>
-    <div class="terminal-line green" id="t6">&gt; Zaobilaženje ograničenja... [OK]</div>
-
-    <div class="progress-wrap" id="progressWrap" style="display:none;">
-      <div class="progress-label">
-        <span>NAPREDAK PRISTUPA</span>
-        <span id="pctLabel">0%</span>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" id="pFill"></div>
-      </div>
+  <div class="card">
+    <div class="card-header">
+      <span>DIJAGNOSTIČKI MODUL 1.0</span>
+      <span class="ref">REF: EVAL-2024-∞</span>
     </div>
 
-    <div class="scan-target" id="scanTarget">
-      <div class="scan-box">
-        META PRONAĐENA
-        <div class="scan-line"></div>
-      </div>
+    <div class="prog-wrap" style="margin-bottom:1.5rem;">
+      <div class="prog-label"><span>NAPREDAK SISTEMSKE PROVJERE</span><span id="s1pct">0%</span></div>
+      <div class="prog-track"><div class="prog-fill" id="s1fill"></div></div>
     </div>
+
+    <div id="termLines">
+      <div class="term-line" id="l0"><div class="dot" id="d0"></div><span>Pokretanje sistema za evaluaciju...</span></div>
+      <div class="term-line" id="l1"><div class="dot" id="d1"></div><span>Provjera kvaliteta razgovora...</span></div>
+      <div class="term-line" id="l2"><div class="dot" id="d2"></div><span>Analiza uletnih rečenica...</span></div>
+      <div class="term-line" id="l3"><div class="dot" id="d3"></div><span>Skeniranje istorije poruka...</span></div>
+      <div class="term-line" id="l4"><div class="dot" id="d4"></div><span>Pretraga originalnosti...</span></div>
+      <div class="term-line" id="l5"><div class="dot" id="d5"></div><span>Detekcija copy-paste komplimenata...</span></div>
+      <div class="term-line" id="l6"><div class="dot" id="d6"></div><span>Pokretanje završnih kalkulacija...</span></div>
+      <div class="term-line red" id="l7" style="margin-top:0.5rem;"><div class="dot err"></div><span>UPOZORENJE: Detektovani značajni problemi.</span></div>
+    </div>
+
+    <div class="ref-tag">ID SLUČAJA: 00132847 — KORISNIK: [SAKRIVENO]</div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     SCREEN 2 — SUBJECT PROFILE
-═══════════════════════════════════════════ -->
+<!-- ════════════════════════════════════
+     SCREEN 2 — STATS
+════════════════════════════════════ -->
 <div class="screen" id="s2">
-  <div class="grid-bg"></div>
-  <div style="font-size:clamp(0.7rem,2vw,0.85rem);color:var(--gold);letter-spacing:0.3em;text-align:center;margin-bottom:1rem;">
-    SUBJEKT IDENTIFIKOVAN
+  <div class="site-header">
+    <div class="dept">REZULTATI EVALUACIJE — MODUL 2.0</div>
+    <h1>AUTOMATSKI SISTEM ZA EVALUACIJU MUŠKARACA</h1>
   </div>
-  <div class="profile-card">
-    <div class="profile-header">
-      <span class="profile-header-title">DOSIJE — AKTIVAN SLUČAJ #2024-DB-∞</span>
-      <span class="profile-id">SAMO ZA OVLAŠTENE OČI</span>
-    </div>
-    <div class="profile-body">
-      <div class="photo-placeholder">
-        <span>👤</span>
-        <small>FOTOGRAFIJA</small>
-        <small>POVJERLJIVO</small>
-      </div>
-      <div class="profile-fields">
-        <div class="field-row" id="f1">
-          <div class="field-label">IME</div>
-          <div class="field-value">Dragana Burazor</div>
-        </div>
-        <div class="field-row" id="f2">
-          <div class="field-label">STATUS</div>
-          <div class="field-value" style="color:var(--gold);">POD ISTRAGOM</div>
-        </div>
-        <div class="field-row" id="f3">
-          <div class="field-label">NIVO OPASNOSTI</div>
-          <div class="field-value danger">⚠ IZUZETNO VISOK</div>
-        </div>
-        <div class="field-row" id="f4">
-          <div class="field-label">RAZLOG OTVARANJA DOSIJEA</div>
-          <div class="field-value" style="font-size:clamp(0.62rem,1.6vw,0.75rem);line-height:1.6;">Već mjesecima krade nečiju pažnju.</div>
-        </div>
-        <div class="field-row" id="f5">
-          <div class="field-label">IZAZVANA EMOCIONALNA ŠTETA</div>
-          <div class="field-value critical">KRITIČNA — I DALJE TRAJE</div>
-        </div>
-      </div>
-    </div>
-    <div class="profile-footer">
-      <button class="btn-fbi" id="s2btn">NASTAVI ISTRAGU &rarr;</button>
-    </div>
-  </div>
-</div>
 
-<!-- ═══════════════════════════════════════════
-     SCREEN 3 — EVIDENCE BOARD
-═══════════════════════════════════════════ -->
-<div class="screen" id="s3">
-  <div class="grid-bg"></div>
-  <div class="board-title">TABLA DOKAZA — SLUČAJ #2024-DB-∞</div>
-  <div class="board-sub">POVJERLJIVO — NE DISTRIBUIRATI</div>
-  <div class="evidence-board">
-    <svg class="red-string" id="redStrings" viewBox="0 0 700 400" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;">
-      <line x1="25%" y1="25%" x2="75%" y2="25%" stroke="#cc1111" stroke-width="1.5" opacity="0.5" stroke-dasharray="4,4"/>
-      <line x1="25%" y1="75%" x2="75%" y2="75%" stroke="#cc1111" stroke-width="1.5" opacity="0.5" stroke-dasharray="4,4"/>
-      <line x1="25%" y1="25%" x2="25%" y2="75%" stroke="#cc1111" stroke-width="1.5" opacity="0.5" stroke-dasharray="4,4"/>
-      <line x1="75%" y1="25%" x2="75%" y2="75%" stroke="#cc1111" stroke-width="1.5" opacity="0.5" stroke-dasharray="4,4"/>
-      <line x1="25%" y1="25%" x2="75%" y2="75%" stroke="#cc1111" stroke-width="1" opacity="0.3" stroke-dasharray="4,4"/>
-      <circle cx="25%" cy="25%" r="5" fill="#cc1111" opacity="0.6"/>
-      <circle cx="75%" cy="25%" r="5" fill="#cc1111" opacity="0.6"/>
-      <circle cx="25%" cy="75%" r="5" fill="#cc1111" opacity="0.6"/>
-      <circle cx="75%" cy="75%" r="5" fill="#cc1111" opacity="0.6"/>
-    </svg>
-    <div class="evidence-grid">
-      <div class="evidence-card" id="ev1">
-        <div class="evidence-tag">POTVRĐENO</div>
-        <div class="evidence-num">DOKAZ #001</div>
-        <span class="evidence-icon">😊</span>
-        <div class="evidence-text">Osmijeh detektovan. Klasifikovan kao oružje za masovno odvlačenje pažnje.</div>
-        <div class="evidence-stamp">REF: DB-001</div>
-      </div>
-      <div class="evidence-card" id="ev2">
-        <div class="evidence-tag">VERIFIKOVANO</div>
-        <div class="evidence-num">DOKAZ #002</div>
-        <span class="evidence-icon">✨</span>
-        <div class="evidence-text">Sumnjivo visok nivo slatkoće. Značajno iznad dozvoljenih granica.</div>
-        <div class="evidence-stamp">REF: DB-002</div>
-      </div>
-      <div class="evidence-card" id="ev3">
-        <div class="evidence-tag">U TOKU</div>
-        <div class="evidence-num">DOKAZ #003</div>
-        <span class="evidence-icon">🧠</span>
-        <div class="evidence-text">Žrtva (A. Vrhovac) nije u stanju da prestane misliti na subjekta. Stanje: trajno.</div>
-        <div class="evidence-stamp">REF: DB-003</div>
-      </div>
-      <div class="evidence-card" id="ev4">
-        <div class="evidence-tag">KRITIČNO</div>
-        <div class="evidence-num">DOKAZ #004</div>
-        <span class="evidence-icon">🦋</span>
-        <div class="evidence-text">Leptirići detektovani. Lokacija: stomak agenta Vrhovca. Učestalost: konstantna.</div>
-        <div class="evidence-stamp">REF: DB-004</div>
+  <div class="card">
+    <div class="card-header"><span>ANALIZA PROFILA KANDIDATA</span><span class="ref">POVJERLJIVO</span></div>
+
+    <div class="section-title">GLAVNE METRIKE</div>
+
+    <div class="stat-row" id="sr0">
+      <div class="stat-label">Vještine razgovora</div>
+      <div class="stat-bar-wrap"><div class="stat-bar-fill" id="sb0"></div></div>
+      <div class="stat-pct">12%</div>
+    </div>
+    <div class="stat-row" id="sr1">
+      <div class="stat-label">Originalnost</div>
+      <div class="stat-bar-wrap"><div class="stat-bar-fill" id="sb1"></div></div>
+      <div class="stat-pct">4%</div>
+    </div>
+    <div class="stat-row" id="sr2">
+      <div class="stat-label">Strpljenje</div>
+      <div class="stat-bar-wrap"><div class="stat-bar-fill" id="sb2"></div></div>
+      <div class="stat-pct">18%</div>
+    </div>
+    <div class="stat-row" id="sr3">
+      <div class="stat-label">Samosvijest</div>
+      <div class="stat-bar-wrap"><div class="stat-bar-fill" id="sb3"></div></div>
+      <div class="stat-pct">7%</div>
+    </div>
+    <div class="stat-row" id="sr4">
+      <div class="stat-label">Shvatanje signala</div>
+      <div class="stat-bar-wrap"><div class="stat-bar-fill" id="sb4"></div></div>
+      <div class="stat-pct">2%</div>
+    </div>
+
+    <div class="success-row" id="successRow">
+      <div class="success-label">UKUPNA ŠANSA ZA USPJEH</div>
+      <div class="success-num">0.01%</div>
+      <div style="font-size:0.55rem;color:var(--text-dim);letter-spacing:0.15em;margin-top:0.4rem;">
+        (margina greške: ±0.00%)
       </div>
     </div>
+
+    <div class="divider"></div>
+
+    <!-- ACHIEVEMENT BADGES -->
+    <div class="section-title">OTKLJUČANA DOSTIGNUĆA</div>
+    <div class="badge-grid">
+      <div class="badge" id="b0">
+        <div class="badge-icon">📱</div>
+        <div><div class="badge-name">PROFESIONALNI DOPISIVAČ</div><div class="badge-desc">Poslao "hej" 47 puta na 3 platforme.</div></div>
+      </div>
+      <div class="badge" id="b1">
+        <div class="badge-icon">🙈</div>
+        <div><div class="badge-name">EKSPERT ZA IGNORISANJE</div><div class="badge-desc">Uspješno ignorisan od strane 12 osoba zaredom.</div></div>
+      </div>
+      <div class="badge" id="b2">
+        <div class="badge-icon">👁️</div>
+        <div><div class="badge-name">KOLEKCIONAR SEEN-ZONE</div><div class="badge-desc">Skupio 34 viđene poruke bez odgovora.</div></div>
+      </div>
+      <div class="badge" id="b3">
+        <div class="badge-icon">🏅</div>
+        <div><div class="badge-name">ŠAMPION UPORNOSTI</div><div class="badge-desc">Nastavio dalje uprkos ogromnim dokazima protiv toga.</div></div>
+      </div>
+    </div>
+
     <div style="text-align:center;margin-top:1.5rem;">
-      <button class="btn-fbi" id="s3btn">POKRENI ANALIZU VJEROVATNOĆE &rarr;</button>
+      <button class="btn" id="s2btn">POGLEDAJ DETEKTOVANA UPOZORENJA &rarr;</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     SCREEN 4 — ANALYSIS
-═══════════════════════════════════════════ -->
+<!-- ════════════════════════════════════
+     SCREEN 3 — UPOZORENJES
+════════════════════════════════════ -->
+<div class="screen" id="s3">
+  <div class="site-header">
+    <div class="dept">MODUL ANALIZE PONAŠANJA — 3.0</div>
+    <h1>AUTOMATSKI SISTEM ZA EVALUACIJU MUŠKARACA</h1>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>DETEKTOVANI PREKRŠAJI</span><span class="ref">OZBILJNOST: VISOKA</span></div>
+
+    <div class="section-title">SISTEMSKA UPOZORENJA</div>
+
+    <div class="warn-item" id="w0">
+      <div class="warn-icon">⚠️</div>
+      <div>
+        <div class="warn-text">Šalje "Hej" svaki dan. Prepoznavanje obrazaca sugeriše da je ovo strategija. Ne radi.</div>
+        <div class="warn-code">KOD: MSG-001 — HRONIČNI_HEJ_SINDROM</div>
+      </div>
+    </div>
+    <div class="warn-item" id="w1">
+      <div class="warn-icon">⚠️</div>
+      <div>
+        <div class="warn-text">Započinje razgovore sa "Šta ima?" — detektovane 23 jedinstvene varijacije, sve sa istom energijom.</div>
+        <div class="warn-code">KOD: MSG-002 — UVOD_BEZ_TRUDA</div>
+      </div>
+    </div>
+    <div class="warn-item" id="w2">
+      <div class="warn-icon">⚠️</div>
+      <div>
+        <div class="warn-text">Misli da je upornost privlačna. Sistem je ovu tvrdnju označio kao činjenično netačnu.</div>
+        <div class="warn-code">KOD: BHV-007 — POGREŠNO_USMJERENA_UPORNOST</div>
+      </div>
+    </div>
+    <div class="warn-item" id="w3">
+      <div class="warn-icon">⚠️</div>
+      <div>
+        <div class="warn-text">Već je ignorisan 7 puta ovog kalendarskog mjeseca. Istraga je u toku.</div>
+        <div class="warn-code">KOD: LOG-412 — PONOVLJENI_INCIDENT_PREVIĐANJA</div>
+      </div>
+    </div>
+    <div class="warn-item" id="w4">
+      <div class="warn-icon">⚠️</div>
+      <div>
+        <div class="warn-text">Nije u stanju da razumije osnovne signale. Ostavljen na seen 4 dana nakon odgovora "ok.". Ipak je ponovo pisao.</div>
+        <div class="warn-code">KOD: HNT-001 — NEUSPJELA_DETEKCIJA_SIGNALA</div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:1.5rem;">
+      <button class="btn" id="s3btn">POKRENI AI ANALIZU &rarr;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     SCREEN 4 — AI ANALYSIS
+════════════════════════════════════ -->
 <div class="screen" id="s4">
-  <div class="grid-bg"></div>
-  <div class="analysis-box">
-    <div class="analysis-title">ANALIZA VJEROVATNOĆE VEZE</div>
-    <div style="font-size:0.55rem;color:var(--text-dim);letter-spacing:0.2em;text-align:center;margin-bottom:1.5rem;">POKRETANJE ALGORITAMA — MOLIMO SAČEKAJTE</div>
+  <div class="site-header">
+    <div class="dept">AI CORE MODUL — 4.0</div>
+    <h1>AUTOMATSKI SISTEM ZA EVALUACIJU MUŠKARACA</h1>
+  </div>
 
-    <div class="analysis-item" id="a1">
-      <div class="analysis-dot" id="d1"></div>
-      <div class="analysis-label">Računanje hemije između subjekata...</div>
-      <div class="analysis-status pending" id="st1">U TOKU</div>
-    </div>
-    <div class="analysis-item" id="a2">
-      <div class="analysis-dot" id="d2"></div>
-      <div class="analysis-label">Provjera kompatibilnosti razgovora...</div>
-      <div class="analysis-status pending" id="st2">NA ČEKANJU</div>
-    </div>
-    <div class="analysis-item" id="a3">
-      <div class="analysis-dot" id="d3"></div>
-      <div class="analysis-label">Analiza potencijala budućih kafa...</div>
-      <div class="analysis-status pending" id="st3">NA ČEKANJU</div>
-    </div>
-    <div class="analysis-item" id="a4">
-      <div class="analysis-dot" id="d4"></div>
-      <div class="analysis-label">Pretraga razloga da je ne pozove na dejt...</div>
-      <div class="analysis-status pending" id="st4">NA ČEKANJU</div>
+  <div class="card">
+    <div class="card-header"><span>IZVJEŠTAJ VJEŠTAČKE INTELIGENCIJE</span><span class="ref">AUTOMATSKI GENERISANO</span></div>
+
+    <div class="section-title">AI DIJAGNOSTIČKI SAŽETAK</div>
+
+    <div style="font-size:0.58rem;color:var(--text-dim);letter-spacing:0.15em;margin-bottom:1rem;">
+      OBRADA KROZ 14 NEURONSKIH SLOJEVA — SIGURNOST: 99.99%
     </div>
 
-    <div class="zero-results" id="zeroResults">
-      <div class="progress-wrap" style="margin-bottom:1.5rem;">
-        <div class="progress-label"><span>PRETRAGA ZAVRŠENA</span><span>100%</span></div>
-        <div class="progress-track"><div class="progress-fill" style="width:100%;background:linear-gradient(90deg,var(--red),var(--red2));"></div></div>
+    <div class="ai-box">
+      <div class="ai-text" id="aiText">
+        Nakon pregleda svih dostupnih dokaza, upoređivanja obrazaca ponašanja, analize vremena slanja poruka i konsultovanja tri odvojene baze normi društvene interakcije...
       </div>
-      <span class="zero-big">0</span>
-      <div class="zero-sub" style="margin-bottom:1rem;">PRONAĐENIH REZULTATA</div>
-      <div style="font-size:0.65rem;color:var(--text-dim);letter-spacing:0.15em;margin-bottom:1.5rem;font-style:italic;">"U bazi nisu pronađeni validni razlozi da je ne pozove na dejt."</div>
-      <button class="btn-fbi" id="s4btn">POGLEDAJ KRITIČNI NALAZ &rarr;</button>
+      <div class="ai-conclusion" id="aiConclusion">
+        <span style="color:var(--red2);font-size:0.6rem;letter-spacing:0.2em;display:block;margin-bottom:0.5rem;">KONAČNA ODLUKA:</span>
+        Korisnik bi vjerovatno trebalo da nastavi dalje.<br>
+        <span style="color:var(--text-dim);font-size:0.6rem;">Sekundarna preporuka: Razmotriti novi hobi. Ili nekoliko njih.</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div style="font-size:0.6rem;color:var(--text-dim);letter-spacing:0.12em;line-height:2;">
+      <span style="color:var(--amber2);">NAPOMENE OBRADE:</span><br>
+      ▸ Sigurnost modela: 99.99% (preostalih 0.01% je greška zaokruživanja)<br>
+      ▸ Razmotreni alternativni ishodi: 0<br>
+      ▸ Pronađeni izuzeci: nijedan<br>
+      ▸ Mogućnost poništavanja preporuke: ne
+    </div>
+
+    <div style="text-align:center;margin-top:1.5rem;">
+      <button class="btn orange" id="s4btn">POKRENI PROCES ŽALBE &rarr;</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     SCREEN 5 — EMERGENCY ALERT
-═══════════════════════════════════════════ -->
+<!-- ════════════════════════════════════
+     SCREEN 5 — APPEALS
+════════════════════════════════════ -->
 <div class="screen" id="s5">
-  <div class="grid-bg"></div>
-  <div class="alert-box">
-    <div style="font-size:0.55rem;color:var(--text-dim);letter-spacing:0.3em;margin-bottom:1rem;">PRIORITET ALFA — SVE JEDINICE DA REAGUJU</div>
-    <div class="alert-warning">⚠ UPOZORENJE</div>
-    <div class="alert-sub">OTKRIVEN KRITIČNI NALAZ — SLUČAJ #2024-DB-∞</div>
-    <div class="alert-bars">
-      <div class="alert-bar"></div>
-      <div class="alert-bar"></div>
-      <div class="alert-bar"></div>
-      <div class="alert-bar"></div>
-      <div class="alert-bar"></div>
+  <div class="site-header">
+    <div class="dept">ODJELJENJE ZA ŽALBE — MODUL 5.0</div>
+    <h1>AUTOMATSKI SISTEM ZA EVALUACIJU MUŠKARACA</h1>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>FORMALNI PROCES ŽALBE</span><span class="ref">ZAHTJEV: #00132847</span></div>
+
+    <div class="section-title">TOK ŽALBE — SVE OPCIJE DOSTUPNE</div>
+
+    <div class="appeal-track">
+      <div class="appeal-step show" id="ap0">
+        <div class="appeal-step-num">OPCIJA A</div>
+        <div class="appeal-q">Podnesite formalnu žalbu na nalaze sistemske evaluacije.</div>
+        <button class="btn" id="ap0btn">Podnesi žalbu</button>
+        <div class="appeal-result" id="ap0res">ŽALBA ODBIJENA. Razlog: Osnov za žalbu nije pronađen. Kod greške: NEMA_OSNOVA.</div>
+      </div>
+
+      <div class="appeal-step" id="ap1">
+        <div class="appeal-step-num">OPCIJA B</div>
+        <div class="appeal-q">Zatražite da ljudski recenzent ručno procijeni vaš slučaj.</div>
+        <button class="btn orange" id="ap1btn">Zatraži ljudsku provjeru</button>
+        <div class="appeal-result orange" id="ap1res">Ljudski recenzent je pregledao slučaj 0.3 sekunde. Takođe odbijeno. Rekao je: "ma ne."</div>
+      </div>
+
+      <div class="appeal-step" id="ap2">
+        <div class="appeal-step-num">OPCIJA C</div>
+        <div class="appeal-q">Proslijedite slučaj višem menadžmentu za konačnu izvršnu odluku.</div>
+        <button class="btn amber" id="ap2btn">Kontaktiraj menadžment</button>
+        <div class="appeal-result amber" id="ap2res">Menadžment je pregledao slučaj. Zvanična preporuka: izađi napolje i dodirni travu. Po mogućnosti stvarnu.</div>
+      </div>
+
+      <div class="appeal-step" id="ap3">
+        <div class="appeal-step-num">OPCIJA D</div>
+        <div class="appeal-q">Podnesite hitan zahtjev za poništenje odluke Vrhovnom komitetu za evaluaciju.</div>
+        <button class="btn" style="border-color:rgba(200,22,15,0.8);color:var(--red-glow);" id="ap3btn">Hitno poništenje</button>
+        <div class="appeal-result" id="ap3res">Komitet je pregledao vaš zahtjev. Komitet se smije. Komitet kaže ne.</div>
+      </div>
     </div>
-    <div class="alert-finding" id="alertFinding">
-      <div style="font-size:0.55rem;color:var(--text-dim);letter-spacing:0.2em;margin-bottom:0.75rem;">IZVJEŠTAJ O NALAZU — POVJERLJIVO</div>
-      Subject <em style="color:var(--gold2);">Dragana Burazor</em> potvrđeno je da je
-      <strong style="color:var(--text-bright);">tačno tip osobe koju agent Vrhovac</strong> traži.
-      <br><br>
-      <span style="color:var(--red2);font-weight:bold;letter-spacing:0.2em;">SUBJEKT IZGLEDA KAO TAČNO NJEGOV TIP.</span>
-    </div>
-    <div style="margin-top:1.5rem;">
-      <button class="btn-fbi" id="s5btn" style="display:none;">PRISTUPI POVJERLJIVOM DOKUMENTU &rarr;</button>
+
+    <div style="text-align:center;margin-top:1.5rem;">
+      <button class="btn" id="s5btn" style="display:none;">POGLEDAJ KONAČNU ODLUKU &rarr;</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     SCREEN 6 — POVJERLJIVO DOC
-═══════════════════════════════════════════ -->
+<!-- ════════════════════════════════════
+     SCREEN 6 — DENIED
+════════════════════════════════════ -->
 <div class="screen" id="s6">
-  <div class="grid-bg"></div>
-  <div class="classified-doc">
-    <div class="classification-bars">
-      <div class="cbar"></div><div class="cbar"></div><div class="cbar"></div><div class="cbar"></div><div class="cbar"></div>
+  <div style="text-align:center;">
+    <div class="denied-stamp">ZAHTJEV ODBIJEN</div>
+    <div class="denied-text">
+      Hvala na interesovanju.<br>
+      Nažalost, pozicija<br>
+      <em>"Osoba s kojom želim da pričam"</em><br>
+      je već popunjena.<br><br>
+      <span style="color:var(--text-dim);font-size:0.75em;">Molimo pokušajte ponovo u drugom univerzumu.</span>
     </div>
-    <div class="classified-header" style="margin-top:1.5rem;">
-      <div class="doc-ref">REFERENCA DOKUMENTA: FBI-2024-DB-∞ / KONAČNA PROCJENA</div>
-      <div class="top-secret-stamp" id="tss">STROGO POVJERLJIVO</div>
-      <div class="doc-ref" style="margin-top:0.5rem;">SAMO ZA OVLAŠTENE OČI — NE KOPIRATI</div>
-    </div>
-    <div class="doc-body">
-      <div style="font-size:0.6rem;color:var(--text-dim);letter-spacing:0.15em;margin-bottom:1rem;">NAKON DETALJNE ANALIZE SVIH DOSTUPNIH DOKAZA:</div>
-      <div class="redline"></div>
-      <div class="recommendation" id="rec">
-        <strong style="color:var(--gold2);letter-spacing:0.2em;display:block;margin-bottom:0.5rem;">KONAČNA PREPORUKA:</strong>
-        Agentu Aleksandru Vrhovcu se ovim naređuje da pozove
-        subject <span style="color:var(--red-glow);">Dragana Burazor</span>
-        na dejt.<br>
-        <span style="font-size:0.65rem;color:var(--text-dim);">Odmah. Bez daljeg odlaganja. Bez izgovora.</span>
-      </div>
-      <div class="redline"></div>
-      <div style="font-size:0.5rem;color:var(--text-dim);letter-spacing:0.15em;margin-top:1rem;">
-        POTPIS: Istražni komitet<br>
-        DATUM: POVJERLJIVO<br>
-        STATUS: OBAVEZNO — BEZ PREGOVORA
-      </div>
-    </div>
-    <div class="classification-bars" style="margin-top:1.5rem;">
-      <div class="cbar"></div><div class="cbar"></div><div class="cbar"></div><div class="cbar"></div><div class="cbar"></div>
-    </div>
-    <div style="text-align:center;margin-top:1.25rem;">
-      <button class="btn-fbi" id="s6btn">POGLEDAJ DETALJE MISIJE &rarr;</button>
-    </div>
-  </div>
-</div>
 
-<!-- ═══════════════════════════════════════════
-     SCREEN 7 — MISSION BRIEFING
-═══════════════════════════════════════════ -->
-<div class="screen" id="s7">
-  <div class="grid-bg"></div>
-  <div class="mission-card">
-    <div class="mission-header">
-      <span class="mission-icon">🎯</span>
-      <span class="mission-title">BRIFING MISIJE — OPERACIJA: DEJT VEČE</span>
-    </div>
-    <div class="mission-body">
-      <div class="mission-row" id="mr1">
-        <div class="mission-key">AGENT</div>
-        <div class="mission-val highlight">Aleksandar Vrhovac</div>
-      </div>
-      <div class="mission-row" id="mr2">
-        <div class="mission-key">CILJ</div>
-        <div class="mission-val">Izvesti subjekta <span style="color:var(--gold2);">Dragana Burazor</span> na dejt.</div>
-      </div>
-      <div class="mission-row" id="mr3">
-        <div class="mission-key">VJEROVATNOĆA USPJEHA</div>
-        <div class="mission-val unknown">Nepoznata — ali vrijedi saznati.</div>
-      </div>
-      <div class="mission-row" id="mr4">
-        <div class="mission-key">POTENCIJALNA NAGRADA</div>
-        <div class="mission-val" style="color:var(--green-dim);">Stvarno lijepo provedeno vrijeme zajedno.</div>
-      </div>
-      <div class="mission-row" id="mr5">
-        <div class="mission-key">NIVO RIZIKA</div>
-        <div class="mission-val" style="color:var(--gold);">Nema rizika. Djeluje sjajno.</div>
-      </div>
-      <div class="mission-divider"></div>
-      <div class="decline-msg" id="declineMsg"></div>
-      <div class="accept-q" id="acceptQ">Agente, da li prihvataš ovu misiju?</div>
-      <div class="mission-buttons">
-        <button id="btn-accept" onclick="acceptMission()">PRIHVATAM ❤️</button>
-        <button id="btn-decline" onclick="declineMission()">ODBIJAM</button>
+    <div class="ticket-box" style="margin:1.5rem auto;">
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:0.25rem 1rem;">
+        <span>REF. SLUČAJA:</span><span class="ticket-val">#00132847-FINAL</span>
+        <span>STATUS:</span><span class="ticket-val" style="color:var(--red2);">ODBIJENO (SVE OPCIJE)</span>
+        <span>PREOSTALE ŽALBE:</span><span class="ticket-val">0</span>
+        <span>SLJEDEĆI KORACI:</span><span class="ticket-val">Možda posjetiti terapeuta.</span>
+        <span>VRIJEME RJEŠENJA:</span><span class="ticket-val">Odmah. Trajno.</span>
+        <span>PUT ESKALACIJE:</span><span class="ticket-val">Ne postoji.</span>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- ═══════════════════════════════════════════
-     SCREEN 8 — CELEBRATION
-═══════════════════════════════════════════ -->
-<div class="screen" id="s8">
-  <div class="floating-hearts" id="fhearts"></div>
-  <div class="celebration-content">
-    <div class="case-closed" style="animation-delay:0.2s;">— SLUČAJ ZATVOREN —</div>
-    <span class="big-heart" style="animation-delay:0.4s;">🌹</span>
-    <div class="reveal-text" style="animation-delay:0.5s;">
-      Pa...<br>
-      <em>Mogao sam samo jednostavno da pitam.</em><br>
-      Ali gdje je tu zabava?
+    <div style="font-size:0.58rem;color:var(--text-dim);letter-spacing:0.15em;line-height:2;margin-top:1rem;">
+      Ovo je automatska poruka Odjeljenja za digitalne granice.<br>
+      Molimo ne odgovarajte na ovu odluku. Sistem neće odgovoriti.<br>
+      <span style="color:var(--orange2);">AMES v2.4 — "Evaluacija traje od trenutka kada si počeo da pišeš."</span>
     </div>
-    <div class="final-question" style="animation-delay:1s;">
-      Da li bi izašla na dejt sa mnom? 🌹
-    </div>
-    <div class="names-line" style="animation-delay:1.4s;">
-      — Aleksandar Vrhovac ❤️ Dragana Burazor —
-    </div>
-    <div style="animation:fadeIn 1s ease both;animation-delay:1.8s;opacity:0;">
-      <button class="btn-fbi" style="border-color:rgba(255,179,198,0.6);color:#ffb3c6;box-shadow:0 0 20px rgba(255,100,150,0.2);" onclick="finalYes()">
-        Da, voljela bih ❤️
+
+    <div style="margin-top:2rem;">
+      <button class="btn" onclick="restart()" style="font-size:0.6rem;">
+        POKRENI EVALUACIJU PONOVO (rezultati će biti isti)
       </button>
-    </div>
-    <div class="reveal-text" id="finalMsg" style="display:none;margin-top:1.5rem;animation-delay:0s;color:#ffb3c6;font-size:clamp(0.8rem,2.5vw,1rem);">
-      🎉 Ovo će biti prelijepo. 🎉
     </div>
   </div>
 </div>
 
 <script>
-/* ── SAT ── */
-function updateClock() {
-  const now = new Date();
-  document.getElementById('topTime').textContent =
-    [now.getHours(),now.getMinutes(),now.getSeconds()]
-    .map(n=>String(n).padStart(2,'0')).join(':');
-}
-setInterval(updateClock, 1000);
-updateClock();
+/* ── CLOCK ── */
+setInterval(()=>{
+  const n=new Date();
+  document.getElementById('clock').textContent=
+    [n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+},1000);
 
-/* ── PRELAZI EKRANA ── */
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s=>{
-    s.classList.remove('active');
-    s.style.animation='';
-  });
-  const el = document.getElementById(id);
-  el.style.animation = 'fadeIn 0.6s ease both';
+/* ── SCREEN SWITCH ── */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>{ s.classList.remove('active'); s.style.animation=''; });
+  const el=document.getElementById(id);
+  el.style.animation='screenIn 0.5s ease both';
   el.classList.add('active');
+  window.scrollTo(0,0);
 }
 
-/* ── EKRAN 1: POKRETANJE SEQUENCE ── */
-(function bootSequence(){
-  const lines = ['t0','t1','t2','t3','t4','t5','t6'];
-  let i = 0;
-  function showLine(){
-    if(i < lines.length){
-      document.getElementById(lines[i]).classList.add('show');
-      i++;
-      setTimeout(showLine, 280 + Math.random()*180);
-    } else {
-      setTimeout(startProgress, 400);
-    }
-  }
-  setTimeout(showLine, 800);
-
-  function startProgress(){
-    const wrap = document.getElementById('progressWrap');
-    wrap.style.display = 'block';
-    const fill = document.getElementById('pFill');
-    const label = document.getElementById('pctLabel');
-    let pct = 0;
-    const iv = setInterval(()=>{
-      pct += Math.random()*4 + 1;
-      if(pct >= 100){ pct = 100; clearInterval(iv); showScan(); }
-      fill.style.width = pct + '%';
-      label.textContent = Math.round(pct) + '%';
-    }, 60);
-  }
-
-  function showScan(){
-    const st = document.getElementById('scanTarget');
-    st.style.display = 'block';
-    setTimeout(()=>{ showScreen('s2'); initS2(); }, 1800);
-  }
-})();
-
-/* ── EKRAN 2: PROFIL ── */
-function initS2(){
-  const fields = ['f1','f2','f3','f4','f5'];
-  fields.forEach((id,i)=>{
-    setTimeout(()=>{
-      document.getElementById(id).classList.add('show');
-    }, 300 + i * 350);
-  });
-  document.getElementById('s2btn').addEventListener('click',()=>{
-    showScreen('s3'); initS3();
-  });
-}
-
-/* ── EKRAN 3: DOKAZI ── */
-function initS3(){
-  const cards = ['ev1','ev2','ev3','ev4'];
-  cards.forEach((id,i)=>{
-    setTimeout(()=>{
-      document.getElementById(id).classList.add('show');
-    }, 300 + i * 400);
-  });
-  document.getElementById('s3btn').addEventListener('click',()=>{
-    showScreen('s4'); initS4();
-  });
-}
-
-/* ── EKRAN 4: ANALIZA ── */
-function initS4(){
-  const items = [
-    {a:'a1',d:'d1',s:'st1',label:'ZAVRŠENO',delay:600},
-    {a:'a2',d:'d2',s:'st2',label:'ZAVRŠENO',delay:1400},
-    {a:'a3',d:'d3',s:'st3',label:'ZAVRŠENO',delay:2200},
-    {a:'a4',d:'d4',s:'st4',label:'PRETRAGA...',delay:3000},
-  ];
-  items.forEach(it=>{
-    setTimeout(()=>{
-      document.getElementById(it.a).classList.add('show');
-      document.getElementById(it.s).textContent = it.label;
-      if(it.label==='ZAVRŠENO'){ document.getElementById(it.d).classList.add('done'); document.getElementById(it.s).classList.remove('pending'); }
-    }, it.delay);
-  });
-  setTimeout(()=>{
-    document.getElementById('st4').textContent = '0 REZULTATA';
-    document.getElementById('st4').classList.add('zero');
-    document.getElementById('d4').classList.add('zero');
-  }, 4400);
-  setTimeout(()=>{
-    const zr = document.getElementById('zeroResults');
-    zr.classList.add('show');
-    document.getElementById('s4btn').addEventListener('click',()=>{
-      showScreen('s5'); initS5();
-    });
-  }, 5000);
-}
-
-/* ── EKRAN 5: UPOZORENJE ── */
-function initS5(){
-  const s5 = document.getElementById('s5');
-  let flashes = 0;
-  const flashIv = setInterval(()=>{
-    flashes++;
-    s5.style.background = flashes%2===0 ? 'rgba(140,0,0,0.25)' : 'var(--dark)';
-    if(flashes >= 8){ clearInterval(flashIv); s5.style.background='var(--dark)'; }
-  }, 200);
-
-  setTimeout(()=>{
-    const af = document.getElementById('alertFinding');
-    af.classList.add('show');
-    setTimeout(()=>{
-      const btn = document.getElementById('s5btn');
-      btn.style.display = 'inline-block';
-      btn.addEventListener('click',()=>{ showScreen('s6'); initS6(); });
-    }, 2000);
-  }, 1800);
-}
-
-/* ── SCREEN 6: POVJERLJIVO ── */
-function initS6(){
-  setTimeout(()=>{
-    document.getElementById('tss').classList.add('show');
-  }, 600);
-  setTimeout(()=>{
-    document.getElementById('rec').classList.add('show');
-  }, 1400);
-  document.getElementById('s6btn').addEventListener('click',()=>{
-    showScreen('s7'); initS7();
-  });
-}
-
-/* ── EKRAN 7: MISIJA ── */
-function initS7(){
-  ['mr1','mr2','mr3','mr4','mr5'].forEach((id,i)=>{
-    setTimeout(()=>{ document.getElementById(id).classList.add('show'); }, 300+i*300);
-  });
-  setTimeout(()=>{ document.getElementById('acceptQ').classList.add('show'); }, 2200);
-
-  /* Postavi dugme za odbijanje blizu prihvatanja */
-  setTimeout(()=>{
-    const acc = document.getElementById('btn-accept');
-    const rect = acc.getBoundingClientRect();
-    const decl = document.getElementById('btn-decline');
-    decl.style.top  = (rect.bottom + 12) + 'px';
-    decl.style.left = rect.left + 'px';
-  }, 300);
-}
-
-/* ── ODBIJAM LOGIC ── */
-let declineCount = 0;
-const declineMsgs = [
-  'ODBIJANJE MISIJE NIJE DOZVOLJENO.',
-  'ZAHTJEV ODBIJEN OD STRANE KOMANDE.',
-  'DOBAR POKUŠAJ, AGENTE.',
-  'MOLIMO IZABERI TAČAN ODGOVOR.',
-  'SISTEMSKA GREŠKA: OPCIJA NIJE PRONAĐENA.',
-  'TO DUGME JE SAMO DEKORACIJA.',
-  'KOMITET SE NE SLAŽE.',
-  'POKUŠAJ PONOVO. SAVJET: NE TO DUGME.',
-  'PONESTAJE PROSTORA OVDJE...',
-  'POSLJEDNJE UPOZORENJE, AGENTE.'
+/* ── NOTIFICATIONS ── */
+const notifs=[
+  {t:'SISTEMSKO UPOZORENJE',m:'Evaluacija u toku. Molimo sačekajte.'},
+  {t:'UPOZORENJE',m:'Detektovan nizak rezultat originalnosti.'},
+  {t:'DIJAGNOSTIKA',m:'Modul za detekciju signala: VAN MREŽE'},
+  {t:'OBAVJEŠTENJE',m:'Prava na žalbu: pažljivo pročitana. Zatim ignorisana.'},
+  {t:'AŽURIRANJE',m:'Menadžment je obaviješten. Smijali su se.'},
+  {t:'SISTEMSKI LOG',m:'Posljednje "hej" poslano prije 6 minuta.'},
+  {t:'AI CORE',m:'Nivo sigurnosti: maksimalan. Rezultat: nepromijenjen.'},
+  {t:'PODSJETNIK',m:'Dodirivanje trave je i dalje besplatno.'},
 ];
-
-function declineMission(){
-  declineCount++;
-  const decl = document.getElementById('btn-decline');
-  const msg  = document.getElementById('declineMsg');
-  msg.textContent = declineMsgs[(declineCount-1) % declineMsgs.length];
-  msg.classList.add('show');
-  setTimeout(()=>{ msg.classList.remove('show'); }, 2000);
-
-  if(declineCount >= 10){
-    decl.style.transition = 'all 0.6s ease';
-    decl.style.opacity = '0';
-    decl.style.transform = 'scale(0)';
-    setTimeout(()=>{ decl.style.display='none'; }, 700);
-    return;
-  }
-
-  const shrink = Math.max(0.45, 1 - declineCount * 0.06);
-  const margin = 20;
-  const bw = (decl.offsetWidth || 120) * shrink;
-  const bh = (decl.offsetHeight || 44) * shrink;
-  const maxX = window.innerWidth  - bw - margin;
-  const maxY = window.innerHeight - bh - margin;
-  const nx = margin + Math.random() * maxX;
-  const ny = margin + Math.random() * maxY;
-  const rot = (Math.random()-0.5)*20;
-
-  decl.style.transition = 'all 0.35s cubic-bezier(0.22,1,0.36,1)';
-  decl.style.left      = nx + 'px';
-  decl.style.top       = ny + 'px';
-  decl.style.transform = `scale(${shrink}) rotate(${rot}deg)`;
-  decl.style.fontSize  = (0.75 * shrink) + 'rem';
+let ni=0;
+function pushNotif(){
+  const c=document.getElementById('notifContainer');
+  const n=notifs[ni%notifs.length]; ni++;
+  const d=document.createElement('div');
+  d.className='notif';
+  d.innerHTML=`<div class="ntitle">${n.t}</div>${n.m}`;
+  c.appendChild(d);
+  setTimeout(()=>d.remove(),4200);
 }
+pushNotif();
+setInterval(pushNotif,7000);
 
-function acceptMission(){
-  document.getElementById('btn-decline').style.display = 'none';
-  showScreen('s8');
-  initS8();
-}
-
-/* ── EKRAN 8: SLAVLJE ── */
-function initS8(){
-  const s8 = document.getElementById('s8');
-  s8.classList.add('warm');
-
-  /* Confetti */
-  const colors=['#ff6b9d','#ff8fab','#ffb3c6','#ffd6e0','#c0476a','#e8748a','#b76e79','#fce4ec'];
-  for(let i=0;i<80;i++){
+/* ── CONFETTI ── */
+function confetti(){
+  const cols=['#c0160f','#e8261e','#c84b00','#d4860a','#e86000','#ff4433','#f0a020'];
+  for(let i=0;i<60;i++){
     setTimeout(()=>{
-      const c = document.createElement('div');
-      c.className='confetti-p';
+      const c=document.createElement('div');
+      c.className='cfp';
       c.style.left=(Math.random()*100)+'vw';
-      c.style.background=colors[Math.floor(Math.random()*colors.length)];
-      c.style.width=(6+Math.random()*8)+'px';
-      c.style.height=(6+Math.random()*8)+'px';
-      c.style.borderRadius=Math.random()>0.5?'50%':'2px';
+      c.style.background=cols[Math.floor(Math.random()*cols.length)];
+      c.style.width=(5+Math.random()*7)+'px';
+      c.style.height=(5+Math.random()*7)+'px';
+      c.style.borderRadius=Math.random()>0.5?'50%':'1px';
       const dur=2.5+Math.random()*2.5;
       c.style.animationDuration=dur+'s';
       document.body.appendChild(c);
-      setTimeout(()=>c.remove(), dur*1000+200);
-    }, i*50);
+      setTimeout(()=>c.remove(),dur*1000+300);
+    },i*55);
   }
-
-  /* Lebdeća srca */
-  const hContainer = document.getElementById('fhearts');
-  const hEmojis = ['🌸','❤️','🌹','💕','✨','💝','🦋'];
-  let hInterval = setInterval(()=>{
-    const h = document.createElement('div');
-    h.className='fheart';
-    h.textContent = hEmojis[Math.floor(Math.random()*hEmojis.length)];
-    h.style.left = (Math.random()*100)+'vw';
-    h.style.bottom='-50px';
-    const dur = 4+Math.random()*4;
-    h.style.animationDuration=dur+'s';
-    h.style.fontSize=(0.9+Math.random()*0.8)+'rem';
-    hContainer.appendChild(h);
-    setTimeout(()=>h.remove(), dur*1000+200);
-  }, 300);
-  setTimeout(()=>clearInterval(hInterval), 8000);
 }
 
-function finalYes(){
-  document.getElementById('finalMsg').style.display = 'block';
-  /* Još jedan nalet konfeta */
-  const colors=['#ff6b9d','#ffd6e0','#c0476a','#ffb3c6'];
-  for(let i=0;i<40;i++){
+/* ═══════════════════════════════════
+   SCREEN 1 — LOADING
+═══════════════════════════════════ */
+(function initS1(){
+  const fill=document.getElementById('s1fill');
+  const pct=document.getElementById('s1pct');
+  const lineIds=['l0','l1','l2','l3','l4','l5','l6','l7'];
+  const dotIds =['d0','d1','d2','d3','d4','d5','d6'];
+  const dotStates=['ok','warn','err','warn','err','err','ok'];
+  let prog=0, li=0;
+
+  const iv=setInterval(()=>{
+    prog+=Math.random()*3.5+1;
+    if(prog>=100){prog=100;clearInterval(iv);finishS1();}
+    fill.style.width=prog+'%';
+    pct.textContent=Math.round(prog)+'%';
+
+    const threshold=(li+1)*(100/(lineIds.length));
+    if(li<lineIds.length && prog>=threshold){
+      const el=document.getElementById(lineIds[li]);
+      el.classList.add('show');
+      if(li<dotIds.length){
+        const dot=document.getElementById(dotIds[li]);
+        dot.className='dot '+dotStates[li];
+      }
+      li++;
+    }
+  },80);
+
+  function finishS1(){
     setTimeout(()=>{
-      const c=document.createElement('div');
-      c.className='confetti-p';
-      c.style.left=(Math.random()*100)+'vw';
-      c.style.background=colors[Math.floor(Math.random()*colors.length)];
-      c.style.borderRadius='50%';
-      c.style.width='8px';c.style.height='8px';
-      const dur=2+Math.random()*2;
-      c.style.animationDuration=dur+'s';
-      document.body.appendChild(c);
-      setTimeout(()=>c.remove(),dur*1000+200);
-    },i*60);
+      document.getElementById('s2btn').addEventListener('click',()=>{show('s2');initS2();});
+      show('s2'); initS2();
+    },1200);
   }
+})();
+
+/* ═══════════════════════════════════
+   SCREEN 2 — STATS
+═══════════════════════════════════ */
+function initS2(){
+  const stats=[12,4,18,7,2];
+  stats.forEach((val,i)=>{
+    setTimeout(()=>{
+      const row=document.getElementById('sr'+i);
+      row.classList.add('show');
+      setTimeout(()=>{ document.getElementById('sb'+i).style.width=val+'%'; },50);
+    },300+i*280);
+  });
+  setTimeout(()=>{ document.getElementById('successRow').classList.add('show'); },2200);
+  setTimeout(()=>{
+    ['b0','b1','b2','b3'].forEach((id,i)=>{
+      setTimeout(()=>document.getElementById(id).classList.add('show'),i*200);
+    });
+  },2800);
+  document.getElementById('s2btn').addEventListener('click',()=>{show('s3');initS3();});
+}
+
+/* ═══════════════════════════════════
+   SCREEN 3 — UPOZORENJES
+═══════════════════════════════════ */
+function initS3(){
+  [0,1,2,3,4].forEach(i=>{
+    setTimeout(()=>document.getElementById('w'+i).classList.add('show'),300+i*350);
+  });
+  document.getElementById('s3btn').addEventListener('click',()=>{show('s4');initS4();});
+}
+
+/* ═══════════════════════════════════
+   SCREEN 4 — AI
+═══════════════════════════════════ */
+function initS4(){
+  setTimeout(()=>document.getElementById('aiText').classList.add('show'),500);
+  setTimeout(()=>document.getElementById('aiConclusion').classList.add('show'),1600);
+  document.getElementById('s4btn').addEventListener('click',()=>{show('s5');initS5();});
+}
+
+/* ═══════════════════════════════════
+   SCREEN 5 — APPEALS
+═══════════════════════════════════ */
+function initS5(){
+  let done=0;
+  function checkAll(){ if(done>=4){ setTimeout(()=>{document.getElementById('s5btn').style.display='inline-block';},400); } }
+
+  // Option A
+  document.getElementById('ap0btn').addEventListener('click',function(){
+    this.disabled=true;
+    const r=document.getElementById('ap0res');
+    r.classList.add('show');
+    document.getElementById('ap1').classList.add('show');
+    done++; checkAll();
+    document.getElementById('ap1btn').addEventListener('click',function(){
+      this.disabled=true;
+      const r2=document.getElementById('ap1res');
+      r2.classList.add('show');
+      document.getElementById('ap2').classList.add('show');
+      done++; checkAll();
+      document.getElementById('ap2btn').addEventListener('click',function(){
+        this.disabled=true;
+        const r3=document.getElementById('ap2res');
+        r3.classList.add('show');
+        document.getElementById('ap3').classList.add('show');
+        done++; checkAll();
+        document.getElementById('ap3btn').addEventListener('click',function(){
+          this.disabled=true;
+          document.getElementById('ap3res').classList.add('show');
+          done++; checkAll();
+        });
+      });
+    });
+  });
+
+  document.getElementById('s5btn').addEventListener('click',()=>{
+    confetti();
+    setTimeout(()=>{ show('s6'); }, 600);
+  });
+}
+
+/* ── RESTART ── */
+function restart(){
+  show('s1');
+  // reset all state
+  location.reload();
 }
 </script>
 </body>
